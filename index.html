@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>AsetKantor Pro - Manajemen Aset Lengkap</title>
+    <title>AsetKantor Pro - Manajemen Aset</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -14,13 +14,10 @@
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         .modal { transition: opacity 0.2s ease; }
         @media print {
-            .no-print { display: none !important; }
-            body { background: white; }
-            .print-table { width: 100%; border-collapse: collapse; }
-            .print-table th, .print-table td { border: 1px solid #000; padding: 8px; text-align: left; }
-            .print-header { text-align: center; margin-bottom: 20px; }
-            .print-header h1 { font-size: 24px; }
-            .print-footer { margin-top: 20px; text-align: center; font-size: 12px; }
+            body * { visibility: hidden; }
+            #printArea, #printArea * { visibility: visible; }
+            #printArea { position: absolute; top: 0; left: 0; width: 100%; margin: 0; padding: 20px; background: white; }
+            .no-print { display: none; }
         }
         .image-preview { max-width: 80px; max-height: 80px; object-fit: cover; border-radius: 8px; }
     </style>
@@ -30,19 +27,20 @@
 <!-- Login Page -->
 <div id="loginPage" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-700">
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 m-4">
-        <div class="text-center mb-6"><div class="text-5xl mb-3">📦</div><h1 class="text-2xl font-bold">AsetKantor Pro</h1><p class="text-gray-500">Manajemen Aset + Masa Pakai + Cetak</p></div>
+        <div class="text-center mb-6"><div class="text-5xl mb-3">📦</div><h1 class="text-2xl font-bold">AsetKantor Pro</h1><p class="text-gray-500">Manajemen Aset + Masa Pakai</p></div>
         <form id="loginForm" class="space-y-4">
             <input type="text" id="loginUsername" placeholder="Username" class="w-full border rounded-xl p-3" required>
             <input type="password" id="loginPassword" placeholder="Password" class="w-full border rounded-xl p-3" required>
             <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold">Login</button>
         </form>
-        <div class="text-center text-xs text-gray-400 mt-4">Demo: admin/admin (full) | staff/password (CRUD aset & pinjam)</div>
+        <div class="text-center text-xs text-gray-400 mt-4">Demo: admin/admin | staff/password</div>
     </div>
 </div>
 
 <!-- Main App -->
 <div id="mainApp" class="hidden">
     <div class="flex min-h-screen">
+        <!-- Sidebar -->
         <aside id="sidebar" class="sidebar fixed md:relative z-40 w-64 bg-white shadow-xl h-screen md:translate-x-0 -translate-x-full overflow-y-auto">
             <div class="p-6 border-b"><h1 class="font-bold text-xl text-indigo-600">📦 AsetKantor</h1><p id="userInfo" class="text-sm text-gray-500 mt-2">Memuat...</p></div>
             <nav class="p-4 space-y-2">
@@ -55,12 +53,17 @@
             </nav>
         </aside>
 
+        <!-- Main Content -->
         <main class="flex-1 overflow-hidden">
-            <div class="bg-white shadow-sm px-6 py-4 flex justify-between sticky top-0 z-10 no-print">
+            <div class="bg-white shadow-sm px-6 py-4 flex justify-between sticky top-0 z-10">
                 <h2 id="pageTitle" class="text-xl font-semibold">Dashboard</h2>
-                <button id="btnCetakLaporan" class="bg-emerald-600 text-white px-4 py-2 rounded-lg no-print"><i class="fas fa-print"></i> Cetak Laporan (Filter Aktif)</button>
+                <div class="flex gap-2">
+                    <button id="btnCetakFilter" class="bg-emerald-600 text-white px-4 py-2 rounded-lg no-print"><i class="fas fa-print"></i> Cetak Tabel</button>
+                    <button id="btnCetakTemplate" class="bg-blue-600 text-white px-4 py-2 rounded-lg no-print"><i class="fas fa-file-alt"></i> Cetak Template Dinding</button>
+                </div>
             </div>
             <div class="p-6">
+                <!-- Dashboard Tab -->
                 <div id="dashboardTab" class="tab-content">
                     <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
                         <div class="bg-white rounded-xl p-4 shadow"><div class="text-gray-500">Total Aset</div><div id="statTotalAset" class="text-2xl font-bold">0</div></div>
@@ -72,24 +75,27 @@
                     <div class="grid lg:grid-cols-2 gap-6"><div class="bg-white rounded-xl p-4"><canvas id="chartKategori"></canvas></div><div class="bg-white rounded-xl p-4"><canvas id="chartLokasi"></canvas></div></div>
                 </div>
 
+                <!-- Data Aset Tab -->
                 <div id="asetTab" class="tab-content hidden">
                     <div class="bg-white rounded-xl shadow p-5">
                         <div class="flex flex-wrap gap-3 mb-5">
                             <input type="text" id="searchAset" placeholder="Cari kode/nama..." class="flex-1 border rounded-xl px-4 py-3">
                             <select id="filterKategori" class="border rounded-xl px-4 py-3"></select>
                             <select id="filterLokasi" class="border rounded-xl px-4 py-3"></select>
-                            <select id="filterKondisi" class="border rounded-xl px-4 py-3"></select>
-                            <button id="btnTambahAset" class="bg-indigo-600 text-white px-5 py-3 rounded-xl"><i class="fas fa-plus"></i> Tambah Aset</button>
+                            <button id="btnTambahAset" class="admin-only hidden bg-indigo-600 text-white px-5 py-3 rounded-xl"><i class="fas fa-plus"></i> Tambah Aset</button>
                         </div>
                         <div class="overflow-auto max-h-[70vh]">
                             <table class="min-w-full text-sm">
-                                <thead class="bg-gray-100"><tr><th class="p-3">Gambar</th><th>Kode</th><th>Nama</th><th>Kategori</th><th>Lokasi</th><th>Nilai</th><th>Status</th><th>Masa Pakai</th><th>Aksi</th></tr></thead>
+                                <thead class="bg-gray-100">
+                                    <tr><th class="p-3">Gambar</th><th>Kode</th><th>Nama</th><th>Kategori</th><th>Lokasi</th><th>Nilai</th><th>Status</th><th>Masa Pakai</th><th class="admin-only hidden">Aksi</th></tr>
+                                </thead>
                                 <tbody id="tableAset"></tbody>
                             </table>
                         </div>
                     </div>
                 </div>
 
+                <!-- Peminjaman Tab -->
                 <div id="peminjamanTab" class="tab-content hidden">
                     <div class="bg-white rounded-xl shadow p-5">
                         <h3 class="font-semibold text-lg">Form Peminjaman</h3>
@@ -104,10 +110,12 @@
                     </div>
                 </div>
 
+                <!-- History Tab -->
                 <div id="historyTab" class="tab-content hidden">
                     <div class="bg-white rounded-xl shadow p-5"><h3 class="font-semibold">Riwayat Peminjaman</h3><div id="tableHistory" class="overflow-x-auto"></div></div>
                 </div>
 
+                <!-- Users Tab (Admin) -->
                 <div id="usersTab" class="tab-content hidden">
                     <div class="bg-white rounded-xl shadow p-5"><h3>Kelola User</h3><div id="usersList" class="space-y-2 mb-4"></div><div class="mt-4 grid grid-cols-1 md:grid-cols-5 gap-2"><input id="newUsername" placeholder="Username" class="border p-2 rounded"><input id="newFullname" placeholder="Nama Lengkap" class="border p-2 rounded"><input id="newPassword" type="password" placeholder="Password" class="border p-2 rounded"><select id="newRole" class="border p-2 rounded"><option value="staff">Staff</option><option value="admin">Admin</option></select><button id="btnAddUser" class="bg-indigo-600 text-white px-3 py-2 rounded">Tambah User</button></div></div>
                 </div>
@@ -137,11 +145,14 @@
     </div>
 </div>
 
+<!-- Area Cetak Template Dinding (tersembunyi) -->
+<div id="printArea" style="display: none;"></div>
+
 <div id="toast" class="toast hidden"></div>
 
 <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwbUxzMAqXQSkhofLeyl9t_HNHl5yOuzLYL20_9jy810MI8gL1okyryddidCwdeUoRQ/exec";
-    
+    // ========== KONFIGURASI ==========
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyIxd3aogd6p1VcjE3rKFbzjOJYIi6Y5LTYE9wXo7nBx6GlXER-haFoW51-30YyNt0/exec"; // GANTI DENGAN URL DEPLOY ANDA
     let authToken = localStorage.getItem('authToken');
     let currentUser = null;
     let asetData = [], peminjamanData = [];
@@ -204,6 +215,7 @@
                 document.getElementById('mainApp').classList.remove('hidden');
                 document.getElementById('userInfo').innerHTML = `${currentUser.namaLengkap} (${currentUser.role})`;
                 if (currentUser.role === 'admin') {
+                    document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
                     document.getElementById('adminMenu').classList.remove('hidden');
                 }
                 await loadAllData();
@@ -254,22 +266,17 @@
         document.getElementById('statExpired').innerText = expired;
     }
     
-    function getFilteredAset() {
-        const keyword = document.getElementById('searchAset')?.value.toLowerCase() || '';
-        const kategori = document.getElementById('filterKategori')?.value || '';
-        const lokasi = document.getElementById('filterLokasi')?.value || '';
-        const kondisi = document.getElementById('filterKondisi')?.value || '';
-        return asetData.filter(a => {
-            const matchKeyword = String(a.kodeAset || '').toLowerCase().includes(keyword) || String(a.namaBarang || '').toLowerCase().includes(keyword);
-            const matchKategori = !kategori || a.kategori === kategori;
-            const matchLokasi = !lokasi || a.lokasi === lokasi;
-            const matchKondisi = !kondisi || a.kondisi === kondisi;
-            return matchKeyword && matchKategori && matchLokasi && matchKondisi;
-        });
-    }
-    
     function renderAsetTable() {
-        const filtered = getFilteredAset();
+        const search = document.getElementById('searchAset')?.value.toLowerCase() || '';
+        const filterKat = document.getElementById('filterKategori')?.value || '';
+        const filterLok = document.getElementById('filterLokasi')?.value || '';
+        let filtered = asetData.filter(a => {
+            const matchSearch = String(a.kodeAset || '').toLowerCase().includes(search) || String(a.namaBarang || '').toLowerCase().includes(search);
+            const matchKat = !filterKat || a.kategori === filterKat;
+            const matchLok = !filterLok || a.lokasi === filterLok;
+            return matchSearch && matchKat && matchLok;
+        });
+        const isAdmin = currentUser?.role === 'admin';
         let html = '';
         for (let a of filtered) {
             html += `<tr class="border-b">
@@ -281,11 +288,10 @@
                 <td class="p-3">Rp ${formatRupiah(a.nilai)}</td>
                 <td class="p-3">${escapeHtml(String(a.status || 'Tersedia'))} ${a.statusMasaPakai === 'Kadaluarsa' ? '<span class="text-red-500 text-xs">(Kadaluarsa)</span>' : ''}</td>
                 <td class="p-3">${a.masaPakaiNilai ? a.masaPakaiNilai + ' ' + a.masaPakaiSatuan : '-'}</td>
-                <td class="p-3"><button onclick="editAset('${a.id}')" class="text-blue-600 mr-2"><i class="fas fa-edit"></i></button><button onclick="deleteAset('${a.id}')" class="text-red-600"><i class="fas fa-trash"></i></button></td>
+                ${isAdmin ? `<td class="p-3"><button onclick="editAset('${a.id}')" class="text-blue-600 mr-2"><i class="fas fa-edit"></i></button><button onclick="deleteAset('${a.id}')" class="text-red-600"><i class="fas fa-trash"></i></button></td>` : ''}
              `;
         }
-        const tbody = document.getElementById('tableAset');
-        if (tbody) tbody.innerHTML = html;
+        document.getElementById('tableAset').innerHTML = html;
     }
 
     window.editAset = (id) => { 
@@ -347,8 +353,7 @@
             tanggalPerolehan: document.getElementById('asetTanggal').value,
             nilai: parseRupiah(document.getElementById('asetNilai').value),
             masaPakaiNilai: document.getElementById('asetMasaPakaiNilai').value,
-            masaPakaiSatuan: document.getElementById('asetMasaPakaiSatuan').value,
-            gambar: '' // akan diisi imageBase64 jika ada
+            masaPakaiSatuan: document.getElementById('asetMasaPakaiSatuan').value
         };
         const fileInput = document.getElementById('asetGambarFile');
         if (fileInput.files.length) {
@@ -373,22 +378,18 @@
     }
     
     async function loadDropdowns() {
-        const [kat, lok, kond] = await Promise.all([apiCall('getKategori'), apiCall('getLokasi'), apiCall('getKondisi')]);
-        if(kat?.success) {
-            const opts = '<option value="">Semua Kategori</option>' + kat.data.map(k=>`<option>${escapeHtml(k)}</option>`).join('');
-            document.getElementById('asetKategori').innerHTML = kat.data.map(k=>`<option>${escapeHtml(k)}</option>`).join('');
+        const [katRes, lokRes, kondRes] = await Promise.all([apiCall('getKategori'), apiCall('getLokasi'), apiCall('getKondisi')]);
+        if(katRes?.success) {
+            const opts = '<option value="">Semua Kategori</option>' + katRes.data.map(k=>`<option>${escapeHtml(k)}</option>`).join('');
             document.getElementById('filterKategori').innerHTML = opts;
+            document.getElementById('asetKategori').innerHTML = katRes.data.map(k=>`<option>${escapeHtml(k)}</option>`).join('');
         }
-        if(lok?.success) {
-            const opts = '<option value="">Semua Lokasi</option>' + lok.data.map(l=>`<option>${escapeHtml(l)}</option>`).join('');
-            document.getElementById('asetLokasi').innerHTML = lok.data.map(l=>`<option>${escapeHtml(l)}</option>`).join('');
+        if(lokRes?.success) {
+            const opts = '<option value="">Semua Lokasi</option>' + lokRes.data.map(l=>`<option>${escapeHtml(l)}</option>`).join('');
             document.getElementById('filterLokasi').innerHTML = opts;
+            document.getElementById('asetLokasi').innerHTML = lokRes.data.map(l=>`<option>${escapeHtml(l)}</option>`).join('');
         }
-        if(kond?.success) {
-            const opts = '<option value="">Semua Kondisi</option>' + kond.data.map(k=>`<option>${escapeHtml(k)}</option>`).join('');
-            document.getElementById('asetKondisi').innerHTML = kond.data.map(k=>`<option>${escapeHtml(k)}</option>`).join('');
-            document.getElementById('filterKondisi').innerHTML = opts;
-        }
+        if(kondRes?.success) document.getElementById('asetKondisi').innerHTML = kondRes.data.map(k=>`<option>${escapeHtml(k)}</option>`).join('');
     }
     
     function loadAvailableAssets() {
@@ -409,7 +410,7 @@
         let tgl = document.getElementById('pinjamTanggal').value;
         if(!peminjam || !tgl) return showToast('Lengkapi data peminjam dan tanggal', true);
         let res = await apiCall('savePeminjaman','POST',{ idAset, kodeAset:kode, namaBarang:nama, peminjam, tglPinjam:tgl, status:'Dipinjam' });
-        if(res?.success) { showToast('Peminjaman berhasil'); loadAllData(); document.getElementById('pinjamAsetId').value=''; document.getElementById('pinjamNama').value=''; }
+        if(res?.success) { showToast('Peminjaman berhasil'); loadAllData(); document.getElementById('pinjamAsetId').value=''; document.getElementById('pinjamNama').value=''; document.getElementById('pinjamTanggal').value=''; }
         else showToast(res?.message, true);
     }
     
@@ -496,6 +497,128 @@
         document.getElementById('hapusPreview')?.addEventListener('click', function(){ file.value=''; document.getElementById('previewGambar').classList.add('hidden'); });
     }
     
+    // Fungsi Cetak Tabel (filtered)
+    function printTable() {
+        const search = document.getElementById('searchAset')?.value.toLowerCase() || '';
+        const filterKat = document.getElementById('filterKategori')?.value || '';
+        const filterLok = document.getElementById('filterLokasi')?.value || '';
+        let filtered = asetData.filter(a => {
+            const matchSearch = String(a.kodeAset || '').toLowerCase().includes(search) || String(a.namaBarang || '').toLowerCase().includes(search);
+            const matchKat = !filterKat || a.kategori === filterKat;
+            const matchLok = !filterLok || a.lokasi === filterLok;
+            return matchSearch && matchKat && matchLok;
+        });
+        let printHtml = `
+            <html><head><title>Laporan Aset</title><style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                h2 { text-align: center; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                .footer { margin-top: 30px; text-align: center; font-size: 12px; }
+            </style></head>
+            <body>
+                <h2>Laporan Inventaris Aset</h2>
+                <p>Tanggal: ${new Date().toLocaleDateString('id-ID')}</p>
+                <p>Filter: Kategori=${filterKat || 'Semua'}, Lokasi=${filterLok || 'Semua'}</p>
+                <table>
+                    <thead><tr><th>Kode</th><th>Nama Barang</th><th>Kategori</th><th>Lokasi</th><th>Nilai</th><th>Status</th><th>Masa Pakai</th></tr></thead>
+                    <tbody>
+        `;
+        filtered.forEach(a => {
+            printHtml += `<tr>
+                <td>${escapeHtml(a.kodeAset)}</td>
+                <td>${escapeHtml(a.namaBarang)}</td>
+                <td>${escapeHtml(a.kategori)}</td>
+                <td>${escapeHtml(a.lokasi)}</td>
+                <td>Rp ${formatRupiah(a.nilai)}</td>
+                <td>${a.status} ${a.statusMasaPakai === 'Kadaluarsa' ? '(Kadaluarsa)' : ''}</td>
+                <td>${a.masaPakaiNilai ? a.masaPakaiNilai + ' ' + a.masaPakaiSatuan : '-'}</td>
+            </tr>`;
+        });
+        printHtml += `</tbody></table><div class="footer">Dicetak dari Aplikasi AsetKantor Pro</div></body></html>`;
+        let win = window.open();
+        win.document.write(printHtml);
+        win.document.close();
+        win.print();
+    }
+    
+    // Fungsi Cetak Template Dinding (format poster)
+    function printWallTemplate() {
+        let html = `
+            <html><head><title>Template Dinding Aset</title><style>
+                body { font-family: 'Courier New', monospace; margin: 0; padding: 20px; background: white; }
+                .poster { max-width: 800px; margin: 0 auto; border: 3px solid #1f2937; padding: 20px; border-radius: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+                h1 { text-align: center; color: #1f2937; font-size: 28px; margin-bottom: 5px; }
+                .subtitle { text-align: center; color: #4b5563; margin-bottom: 30px; }
+                .qr-area { text-align: center; margin: 20px 0; }
+                .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
+                .info-item { border-bottom: 1px dashed #ccc; padding: 8px; }
+                .label { font-weight: bold; color: #374151; }
+                .footer { text-align: center; margin-top: 30px; font-size: 12px; color: #6b7280; }
+                @media print {
+                    body { margin: 0; padding: 0; }
+                    .poster { box-shadow: none; border: 1px solid #ccc; }
+                }
+            </style>
+            <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"><\/script>
+            </head>
+            <body>
+                <div class="poster">
+                    <h1>📋 INVENTARIS ASET KANTOR</h1>
+                    <div class="subtitle">Scan QR Code untuk melihat detail aset</div>
+                    <div class="qr-area" id="qrContainer"></div>
+                    <div class="info-grid">
+                        <div class="info-item"><span class="label">Kode Aset:</span> <span id="kodeAset"></span></div>
+                        <div class="info-item"><span class="label">Nama Barang:</span> <span id="namaBarang"></span></div>
+                        <div class="info-item"><span class="label">Kategori:</span> <span id="kategori"></span></div>
+                        <div class="info-item"><span class="label">Lokasi:</span> <span id="lokasi"></span></div>
+                        <div class="info-item"><span class="label">Kondisi:</span> <span id="kondisi"></span></div>
+                        <div class="info-item"><span class="label">Status:</span> <span id="status"></span></div>
+                        <div class="info-item"><span class="label">Nilai:</span> <span id="nilai"></span></div>
+                        <div class="info-item"><span class="label">Masa Pakai:</span> <span id="masaPakai"></span></div>
+                        <div class="info-item"><span class="label">Tanggal Perolehan:</span> <span id="tanggal"></span></div>
+                    </div>
+                    <div class="footer">Dicetak dari Sistem AsetKantor Pro | ${new Date().toLocaleDateString('id-ID')}</div>
+                </div>
+                <script>
+                    let urlParams = new URLSearchParams(window.location.search);
+                    let kode = urlParams.get('kode');
+                    if(kode) {
+                        // Ambil data dari localStorage (sederhana)
+                        let asetData = JSON.parse(localStorage.getItem('asetForPrint') || '[]');
+                        let aset = asetData.find(a => a.kodeAset === kode);
+                        if(aset) {
+                            document.getElementById('kodeAset').innerText = aset.kodeAset;
+                            document.getElementById('namaBarang').innerText = aset.namaBarang;
+                            document.getElementById('kategori').innerText = aset.kategori;
+                            document.getElementById('lokasi').innerText = aset.lokasi;
+                            document.getElementById('kondisi').innerText = aset.kondisi;
+                            document.getElementById('status').innerText = aset.status;
+                            document.getElementById('nilai').innerText = 'Rp ' + new Intl.NumberFormat('id-ID').format(aset.nilai);
+                            document.getElementById('masaPakai').innerText = aset.masaPakaiNilai ? aset.masaPakaiNilai + ' ' + aset.masaPakaiSatuan : '-';
+                            document.getElementById('tanggal').innerText = aset.tanggalPerolehan;
+                            new QRCode(document.getElementById('qrContainer'), { text: window.location.href, width: 150, height: 150 });
+                        } else { document.getElementById('qrContainer').innerHTML = '<p>Data tidak ditemukan</p>'; }
+                    } else { document.getElementById('qrContainer').innerHTML = '<p>Pilih aset terlebih dahulu</p>'; }
+                <\/script>
+            </body>
+            </html>
+        `;
+        let win = window.open();
+        win.document.write(html);
+        win.document.close();
+        // Simpan data aset ke localStorage window
+        win.localStorage.setItem('asetForPrint', JSON.stringify(asetData));
+        // Redirect ke URL dengan parameter kode (pilih aset)
+        let kode = prompt("Masukkan Kode Aset yang akan dicetak templatenya (contoh: AST-001):");
+        if(kode) {
+            win.location.href = win.location.href.split('?')[0] + '?kode=' + encodeURIComponent(kode);
+        } else {
+            win.close();
+        }
+    }
+    
     function showTab(tab) {
         document.querySelectorAll('.tab-content').forEach(el=>el.classList.add('hidden'));
         const activeTab = document.getElementById(tab+'Tab');
@@ -504,67 +627,9 @@
         document.getElementById('pageTitle').innerText = titles[tab] || 'Dashboard';
         if(tab==='peminjaman') loadAvailableAssets();
         if(tab==='users' && currentUser?.role==='admin') renderUsers();
-        if(tab==='aset') renderAsetTable();
     }
     
-    function printWithFilter() {
-        const filtered = getFilteredAset();
-        const printWindow = window.open('', '_blank');
-        let htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head><title>Laporan Aset Kantor</title>
-        <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            .print-header { text-align: center; margin-bottom: 30px; }
-            .print-header h1 { margin: 0; }
-            .print-header p { margin: 5px 0; color: #666; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #000; padding: 8px; text-align: left; }
-            th { background-color: #f2f2f2; }
-            .print-footer { margin-top: 30px; text-align: center; font-size: 12px; }
-            @media print {
-                button { display: none; }
-            }
-        </style>
-        </head>
-        <body>
-        <div class="print-header">
-            <h1>LAPORAN DATA ASET KANTOR</h1>
-            <p>Dicetak pada: ${new Date().toLocaleString('id-ID')}</p>
-            <p>Total Aset: ${filtered.length} item</p>
-        </div>
-        <table>
-            <thead>
-                <tr><th>Kode Aset</th><th>Nama Barang</th><th>Kategori</th><th>Lokasi</th><th>Nilai (Rp)</th><th>Status</th><th>Masa Pakai</th></tr>
-            </thead>
-            <tbody>
-        `;
-        filtered.forEach(a => {
-            htmlContent += `<tr>
-                <td>${escapeHtml(String(a.kodeAset || ''))}</td>
-                <td>${escapeHtml(String(a.namaBarang || ''))}</td>
-                <td>${escapeHtml(String(a.kategori || '-'))}</td>
-                <td>${escapeHtml(String(a.lokasi || '-'))}</td>
-                <td>${formatRupiah(a.nilai)}</td>
-                <td>${escapeHtml(String(a.status || 'Tersedia'))}</td>
-                <td>${a.masaPakaiNilai ? a.masaPakaiNilai + ' ' + a.masaPakaiSatuan : '-'}</td>
-             `;
-        });
-        htmlContent += `
-            </tbody>
-        </table>
-        <div class="print-footer">
-            <p>Dokumen ini dicetak dari sistem AsetKantor Pro</p>
-        </div>
-        <button onclick="window.print()" style="margin-top:20px; padding:10px;">Cetak</button>
-        </body>
-        </html>
-        `;
-        printWindow.document.write(htmlContent);
-        printWindow.document.close();
-    }
-    
+    // Event Listeners
     document.getElementById('loginForm')?.addEventListener('submit', async(e)=>{ e.preventDefault(); await login(document.getElementById('loginUsername').value, document.getElementById('loginPassword').value); });
     document.getElementById('btnTambahAset')?.addEventListener('click',()=>openModalAset(null));
     document.getElementById('closeModalAset')?.addEventListener('click', closeModal);
@@ -572,19 +637,21 @@
     document.getElementById('searchAset')?.addEventListener('input', renderAsetTable);
     document.getElementById('filterKategori')?.addEventListener('change', renderAsetTable);
     document.getElementById('filterLokasi')?.addEventListener('change', renderAsetTable);
-    document.getElementById('filterKondisi')?.addEventListener('change', renderAsetTable);
     document.getElementById('btnPinjam')?.addEventListener('click', pinjam);
     document.getElementById('menuToggle')?.addEventListener('click',()=>document.getElementById('sidebar').classList.toggle('-translate-x-full'));
-    document.getElementById('btnCetakLaporan')?.addEventListener('click', printWithFilter);
+    document.getElementById('btnCetakFilter')?.addEventListener('click', printTable);
+    document.getElementById('btnCetakTemplate')?.addEventListener('click', printWallTemplate);
     
     setupRupiah();
     setupPreview();
     
+    // Auto login check
     if(authToken && localStorage.getItem('currentUser')) {
         currentUser = JSON.parse(localStorage.getItem('currentUser'));
         document.getElementById('loginPage').classList.add('hidden');
         document.getElementById('mainApp').classList.remove('hidden');
         document.getElementById('userInfo').innerHTML = `${currentUser.namaLengkap} (${currentUser.role})`;
+        if(currentUser.role==='admin') { document.querySelectorAll('.admin-only').forEach(el=>el.classList.remove('hidden')); document.getElementById('adminMenu').classList.remove('hidden'); }
         loadAllData();
         showTab('dashboard');
     } else {
