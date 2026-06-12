@@ -3,661 +3,424 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>AsetKantor Pro - Manajemen Aset</title>
+    <title>Aset Kantor Pro | Penyusutan Bulanan + Excel</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/autonumeric@4.6.0/dist/autoNumeric.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background: #f1f5f9; }
-        .toast { position: fixed; bottom: 20px; right: 20px; z-index: 1000; background: #1f2937; color: white; padding: 10px 20px; border-radius: 12px; animation: slideIn 0.3s ease; }
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        .modal { transition: opacity 0.2s ease; }
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #f1f5f9; }
+        .qr-icon { cursor: pointer; transition: 0.2s; }
+        .qr-icon:hover { transform: scale(1.05); color: #2563eb; }
+        .table-wrapper { overflow-x: auto; }
+        .rupiah-input { text-align: right; }
         @media print {
             body * { visibility: hidden; }
             #printArea, #printArea * { visibility: visible; }
-            #printArea { position: absolute; top: 0; left: 0; width: 100%; margin: 0; padding: 20px; background: white; }
+            #printArea { position: absolute; top: 0; left: 0; width: 100%; margin: 0; padding: 1rem; background: white; }
             .no-print { display: none; }
         }
-        .image-preview { max-width: 80px; max-height: 80px; object-fit: cover; border-radius: 8px; }
     </style>
 </head>
 <body>
 
-<!-- Login Page -->
-<div id="loginPage" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-700">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 m-4">
-        <div class="text-center mb-6"><div class="text-5xl mb-3">📦</div><h1 class="text-2xl font-bold">AsetKantor Pro</h1><p class="text-gray-500">Manajemen Aset + Masa Pakai</p></div>
-        <form id="loginForm" class="space-y-4">
-            <input type="text" id="loginUsername" placeholder="Username" class="w-full border rounded-xl p-3" required>
-            <input type="password" id="loginPassword" placeholder="Password" class="w-full border rounded-xl p-3" required>
-            <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold">Login</button>
+<!-- LAYAR LOGIN -->
+<div id="loginContainer" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 px-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+        <div class="text-center mb-6">
+            <i class="fas fa-building text-4xl text-indigo-600"></i>
+            <h2 class="text-2xl font-bold mt-2 text-gray-800">ASET YMKB APPS</h2>
+            <p class="text-gray-500 text-sm">Yayasan Mujahidin Kalbar</p>
+        </div>
+        <form id="loginForm">
+            <div class="mb-4"><label class="block text-gray-700 text-sm font-medium mb-1">Username</label><input type="text" id="loginUsername" class="w-full border rounded-xl px-4 py-2" required></div>
+            <div class="mb-6"><label class="block text-gray-700 text-sm font-medium mb-1">Password</label><input type="password" id="loginPassword" class="w-full border rounded-xl px-4 py-2" required></div>
+            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl">Masuk</button>
         </form>
-        <div class="text-center text-xs text-gray-400 mt-4">Demo: admin/admin | staff/password</div>
+        <p class="text-xs text-center text-gray-400 mt-4">Demo: admin/admin (full) | user/user (baca)</p>
     </div>
 </div>
 
-<!-- Main App -->
-<div id="mainApp" class="hidden">
-    <div class="flex min-h-screen">
-        <!-- Sidebar -->
-        <aside id="sidebar" class="sidebar fixed md:relative z-40 w-64 bg-white shadow-xl h-screen md:translate-x-0 -translate-x-full overflow-y-auto">
-            <div class="p-6 border-b"><h1 class="font-bold text-xl text-indigo-600">📦 AsetKantor</h1><p id="userInfo" class="text-sm text-gray-500 mt-2">Memuat...</p></div>
-            <nav class="p-4 space-y-2">
-                <button onclick="showTab('dashboard')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-indigo-50"><i class="fas fa-chart-line"></i> Dashboard</button>
-                <button onclick="showTab('aset')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-indigo-50"><i class="fas fa-boxes"></i> Data Aset</button>
-                <button onclick="showTab('peminjaman')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-indigo-50"><i class="fas fa-hand-holding"></i> Peminjaman</button>
-                <button onclick="showTab('history')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-indigo-50"><i class="fas fa-history"></i> History</button>
-                <div id="adminMenu" class="hidden"><hr class="my-3"><button onclick="showTab('users')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-indigo-50"><i class="fas fa-users"></i> Kelola User</button></div>
-                <hr class="my-3"><button onclick="logout()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50"><i class="fas fa-sign-out-alt"></i> Logout</button>
-            </nav>
-        </aside>
+<!-- MAIN APP -->
+<div id="appContainer" class="hidden">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+        <!-- Header dengan tombol rapi -->
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-building text-indigo-600"></i> ASET YMKB
+                </h1>
+                <p class="text-gray-500 text-sm flex items-center gap-2 mt-1">
+                    <i class="fas fa-user-circle"></i> Login: <span id="roleBadge" class="font-semibold"></span>
+                    <span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-xs">Expired → Nilai Buku Rp1</span>
+                </p>
+            </div>
 
-        <!-- Main Content -->
-        <main class="flex-1 overflow-hidden">
-            <div class="bg-white shadow-sm px-6 py-4 flex justify-between sticky top-0 z-10">
-                <h2 id="pageTitle" class="text-xl font-semibold">Dashboard</h2>
+            <!-- Tombol-tombol -->
+            <div class="flex flex-wrap justify-end gap-2 w-full lg:w-auto">
                 <div class="flex gap-2">
-                    <button id="btnCetakFilter" class="bg-emerald-600 text-white px-4 py-2 rounded-lg no-print"><i class="fas fa-print"></i> Cetak Tabel</button>
-                    <button id="btnCetakTemplate" class="bg-blue-600 text-white px-4 py-2 rounded-lg no-print"><i class="fas fa-file-alt"></i> Cetak Template Dinding</button>
+                    <button id="addAssetBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 text-sm shadow-md"><i class="fas fa-plus-circle"></i> Tambah Aset</button>
+                    <button id="printFilterBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 text-sm"><i class="fas fa-print"></i> Print</button>
                 </div>
+                <div class="flex gap-2">
+                    <button id="backupBtn" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-xl text-sm"><i class="fas fa-download"></i> Backup</button>
+                    <button id="restoreBtn" class="bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded-xl text-sm"><i class="fas fa-upload"></i> Restore</button>
+                </div>
+                <div class="flex gap-2">
+                    <button id="syncToGSheetBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-sm"><i class="fas fa-cloud-upload-alt"></i> Sinkron</button>
+                    <button id="importFromGSheetBtn" class="bg-teal-600 hover:bg-teal-700 text-white px-3 py-2 rounded-xl text-sm"><i class="fas fa-cloud-download-alt"></i> Impor</button>
+                </div>
+                <div class="flex gap-2">
+                    <button id="openMasterDataBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-xl text-sm"><i class="fas fa-database"></i> Master</button>
+                    <button id="manageUsersBtn" class="bg-pink-600 hover:bg-pink-700 text-white px-3 py-2 rounded-xl text-sm"><i class="fas fa-users"></i> User</button>
+                </div>
+                <button id="logoutBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-xl text-sm"><i class="fas fa-sign-out-alt"></i> Logout</button>
             </div>
-            <div class="p-6">
-                <!-- Dashboard Tab -->
-                <div id="dashboardTab" class="tab-content">
-                    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-                        <div class="bg-white rounded-xl p-4 shadow"><div class="text-gray-500">Total Aset</div><div id="statTotalAset" class="text-2xl font-bold">0</div></div>
-                        <div class="bg-white rounded-xl p-4 shadow"><div class="text-gray-500">Total Nilai</div><div id="statTotalNilai" class="text-2xl font-bold">Rp0</div></div>
-                        <div class="bg-white rounded-xl p-4 shadow"><div class="text-gray-500">Dipinjam</div><div id="statDipinjam" class="text-2xl font-bold text-orange-600">0</div></div>
-                        <div class="bg-white rounded-xl p-4 shadow"><div class="text-gray-500">Tersedia</div><div id="statTersedia" class="text-2xl font-bold text-green-600">0</div></div>
-                        <div class="bg-white rounded-xl p-4 shadow"><div class="text-gray-500">Kadaluarsa</div><div id="statExpired" class="text-2xl font-bold text-red-600">0</div></div>
-                    </div>
-                    <div class="grid lg:grid-cols-2 gap-6"><div class="bg-white rounded-xl p-4"><canvas id="chartKategori"></canvas></div><div class="bg-white rounded-xl p-4"><canvas id="chartLokasi"></canvas></div></div>
-                </div>
+        </div>
 
-                <!-- Data Aset Tab -->
-                <div id="asetTab" class="tab-content hidden">
-                    <div class="bg-white rounded-xl shadow p-5">
-                        <div class="flex flex-wrap gap-3 mb-5">
-                            <input type="text" id="searchAset" placeholder="Cari kode/nama..." class="flex-1 border rounded-xl px-4 py-3">
-                            <select id="filterKategori" class="border rounded-xl px-4 py-3"></select>
-                            <select id="filterLokasi" class="border rounded-xl px-4 py-3"></select>
-                            <button id="btnTambahAset" class="admin-only hidden bg-indigo-600 text-white px-5 py-3 rounded-xl"><i class="fas fa-plus"></i> Tambah Aset</button>
-                        </div>
-                        <div class="overflow-auto max-h-[70vh]">
-                            <table class="min-w-full text-sm">
-                                <thead class="bg-gray-100">
-                                    <tr><th class="p-3">Gambar</th><th>Kode</th><th>Nama</th><th>Kategori</th><th>Lokasi</th><th>Nilai</th><th>Status</th><th>Masa Pakai</th><th class="admin-only hidden">Aksi</th></tr>
-                                </thead>
-                                <tbody id="tableAset"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+        <!-- Statistik Ringkasan 6 card -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+            <div class="bg-white rounded-2xl shadow p-3 flex items-center gap-2 border-l-8 border-blue-500"><div class="bg-blue-100 p-2 rounded-full"><i class="fas fa-boxes text-blue-600"></i></div><div><p class="text-gray-500 text-xs">Total Aset</p><p id="totalAset" class="text-xl font-bold">0</p></div></div>
+            <div class="bg-white rounded-2xl shadow p-3 flex items-center gap-2 border-l-8 border-green-500"><div class="bg-green-100 p-2 rounded-full"><i class="fas fa-check-circle text-green-600"></i></div><div><p class="text-gray-500 text-xs">Tersedia</p><p id="statusTersedia" class="text-xl font-bold">0</p></div></div>
+            <div class="bg-white rounded-2xl shadow p-3 flex items-center gap-2 border-l-8 border-yellow-500"><div class="bg-yellow-100 p-2 rounded-full"><i class="fas fa-exchange-alt text-yellow-600"></i></div><div><p class="text-gray-500 text-xs">Dipinjam</p><p id="statusDipinjam" class="text-xl font-bold">0</p></div></div>
+            <div class="bg-white rounded-2xl shadow p-3 flex items-center gap-2 border-l-8 border-red-500"><div class="bg-red-100 p-2 rounded-full"><i class="fas fa-clock text-red-600"></i></div><div><p class="text-gray-500 text-xs">Kadaluwarsa</p><p id="expiredCount" class="text-xl font-bold">0</p></div></div>
+            <div class="bg-white rounded-2xl shadow p-3 flex items-center gap-2 border-l-8 border-indigo-500"><div class="bg-indigo-100 p-2 rounded-full"><i class="fas fa-chart-line text-indigo-600"></i></div><div><p class="text-gray-500 text-xs">Total Perolehan</p><p id="totalNilaiPerolehan" class="text-xl font-bold">Rp0</p></div></div>
+            <div class="bg-white rounded-2xl shadow p-3 flex items-center gap-2 border-l-8 border-purple-500"><div class="bg-purple-100 p-2 rounded-full"><i class="fas fa-book text-purple-600"></i></div><div><p class="text-gray-500 text-xs">Total Nilai Buku</p><p id="totalNilaiBuku" class="text-xl font-bold">Rp0</p></div></div>
+        </div>
 
-                <!-- Peminjaman Tab -->
-                <div id="peminjamanTab" class="tab-content hidden">
-                    <div class="bg-white rounded-xl shadow p-5">
-                        <h3 class="font-semibold text-lg">Form Peminjaman</h3>
-                        <div class="grid md:grid-cols-4 gap-3 mt-3">
-                            <select id="pinjamAsetId" class="border rounded-lg p-2"></select>
-                            <input type="text" id="pinjamNama" placeholder="Nama Peminjam" class="border rounded-lg p-2">
-                            <input type="date" id="pinjamTanggal" class="border rounded-lg p-2">
-                            <button id="btnPinjam" class="bg-indigo-600 text-white px-4 py-2 rounded-lg">Pinjam</button>
-                        </div>
-                        <h3 class="font-semibold text-lg mt-6">Peminjaman Aktif</h3>
-                        <div id="tablePeminjamanAktif" class="overflow-x-auto"></div>
-                    </div>
-                </div>
+        <!-- Advanced Dashboard: 6 Grafik Grid 3 kolom -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
+            <div class="bg-white rounded-2xl shadow p-3"><h3 class="text-sm font-semibold mb-2"><i class="fas fa-chart-bar text-indigo-500"></i> Jumlah Aset per Kategori</h3><canvas id="chartKategori" height="160"></canvas></div>
+            <div class="bg-white rounded-2xl shadow p-3"><h3 class="text-sm font-semibold mb-2"><i class="fas fa-chart-pie text-green-500"></i> Status Aset</h3><canvas id="chartStatus" height="160"></canvas></div>
+            <div class="bg-white rounded-2xl shadow p-3"><h3 class="text-sm font-semibold mb-2"><i class="fas fa-map-marker-alt text-purple-500"></i> Aset per Lokasi</h3><canvas id="chartLokasi" height="160"></canvas></div>
+            <div class="bg-white rounded-2xl shadow p-3"><h3 class="text-sm font-semibold mb-2"><i class="fas fa-chart-line text-orange-500"></i> Tren Nilai Buku per Tahun</h3><canvas id="chartTahun" height="160"></canvas></div>
+            <div class="bg-white rounded-2xl shadow p-3"><h3 class="text-sm font-semibold mb-2"><i class="fas fa-chart-pie text-teal-500"></i> Komposisi Nilai Buku</h3><canvas id="chartDonut" height="160"></canvas></div>
+            <div class="bg-white rounded-2xl shadow p-3"><h3 class="text-sm font-semibold mb-2"><i class="fas fa-trophy text-yellow-500"></i> Top 5 Aset (Nilai Buku)</h3><canvas id="chartTop" height="160"></canvas></div>
+        </div>
 
-                <!-- History Tab -->
-                <div id="historyTab" class="tab-content hidden">
-                    <div class="bg-white rounded-xl shadow p-5"><h3 class="font-semibold">Riwayat Peminjaman</h3><div id="tableHistory" class="overflow-x-auto"></div></div>
-                </div>
+        <!-- Ringkasan Metrik Tambahan -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            <div class="bg-white rounded-2xl shadow p-4 text-center"><i class="fas fa-calendar-alt text-indigo-500 text-2xl mb-2 block"></i><p class="text-gray-500 text-sm">Rata-rata Umur Aset (tahun)</p><p id="avgAge" class="text-2xl font-bold">0</p></div>
+            <div class="bg-white rounded-2xl shadow p-4 text-center"><i class="fas fa-building text-green-500 text-2xl mb-2 block"></i><p class="text-gray-500 text-sm">Lokasi dengan Aset Terbanyak</p><p id="topLocation" class="text-xl font-bold">-</p></div>
+            <div class="bg-white rounded-2xl shadow p-4 text-center"><i class="fas fa-chart-simple text-purple-500 text-2xl mb-2 block"></i><p class="text-gray-500 text-sm">Total Penyusutan per Tahun</p><p id="totalDepresiasi" class="text-xl font-bold">Rp0</p></div>
+        </div>
 
-                <!-- Users Tab (Admin) -->
-                <div id="usersTab" class="tab-content hidden">
-                    <div class="bg-white rounded-xl shadow p-5"><h3>Kelola User</h3><div id="usersList" class="space-y-2 mb-4"></div><div class="mt-4 grid grid-cols-1 md:grid-cols-5 gap-2"><input id="newUsername" placeholder="Username" class="border p-2 rounded"><input id="newFullname" placeholder="Nama Lengkap" class="border p-2 rounded"><input id="newPassword" type="password" placeholder="Password" class="border p-2 rounded"><select id="newRole" class="border p-2 rounded"><option value="staff">Staff</option><option value="admin">Admin</option></select><button id="btnAddUser" class="bg-indigo-600 text-white px-3 py-2 rounded">Tambah User</button></div></div>
-                </div>
+        <!-- Filter & Tombol Ekspor (ganti dengan Excel) -->
+        <div class="bg-white rounded-2xl shadow-sm p-4 mb-6 flex flex-col md:flex-row gap-3 justify-between items-center">
+            <div class="relative w-full md:w-80"><i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i><input type="text" id="searchInput" placeholder="Cari aset..." class="pl-10 pr-4 py-2 w-full border rounded-xl"></div>
+            <div class="flex flex-wrap gap-3">
+                <select id="filterStatus" class="border rounded-xl px-3 py-2 text-sm"><option value="all">Semua Status</option><option>Tersedia</option><option>Dipinjam</option><option>Rusak</option></select>
+                <select id="filterKategori" class="border rounded-xl px-3 py-2 text-sm"><option value="all">Semua Kategori</option></select>
+                <select id="filterLokasi" class="border rounded-xl px-3 py-2 text-sm"><option value="all">Semua Lokasi</option></select>
+                <button id="resetFilterBtn" class="bg-gray-200 hover:bg-gray-300 px-3 rounded-xl text-sm"><i class="fas fa-undo-alt"></i> Reset</button>
+                <button id="exportExcelBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 rounded-xl text-sm flex items-center gap-1"><i class="fas fa-file-excel"></i> Ekspor Excel</button>
             </div>
-        </main>
+        </div>
+
+        <!-- Tabel Aset (tambah kolom Penyusutan/bln) -->
+        <div class="bg-white rounded-2xl shadow overflow-hidden">
+            <div class="table-wrapper">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50 text-xs">
+                        <tr><th class="px-3 py-2">Foto</th><th class="px-3 py-2">Kode/Nama</th><th class="px-3 py-2">Kategori</th><th class="px-3 py-2">Lokasi</th><th class="px-3 py-2">Status</th><th class="px-3 py-2">Nilai Perolehan</th><th class="px-3 py-2">Penyusutan/thn</th><th class="px-3 py-2">Penyusutan/bln</th><th class="px-3 py-2">Nilai Buku</th><th class="px-3 py-2">QR</th><th class="px-3 py-2">Aksi</th></tr>
+                    </thead>
+                    <tbody id="assetTableBody" class="text-sm"><tr><td colspan="11" class="text-center py-8">Memuat...<\/td></tr>
+                </tbody>
+            </table>
+            </div>
+        </div>
     </div>
-</div>
 
-<!-- Modal Form Aset -->
-<div id="modalAset" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 hidden modal">
-    <div class="bg-white rounded-2xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
-        <div class="flex justify-between items-center mb-4"><h2 id="modalAsetTitle" class="text-xl font-semibold">Tambah Aset</h2><button id="closeModalAset" class="text-gray-400 text-2xl">&times;</button></div>
-        <form id="formAset" class="space-y-4">
-            <input type="hidden" id="asetId">
-            <div><label class="block text-sm font-medium">Kode Aset *</label><input type="text" id="asetKode" class="w-full border rounded-lg p-2" required></div>
-            <div><label class="block text-sm font-medium">Nama Barang *</label><input type="text" id="asetNama" class="w-full border rounded-lg p-2" required></div>
-            <div><label class="block text-sm font-medium">Kategori</label><select id="asetKategori" class="w-full border rounded-lg p-2"></select></div>
-            <div><label class="block text-sm font-medium">Lokasi</label><select id="asetLokasi" class="w-full border rounded-lg p-2"></select></div>
-            <div><label class="block text-sm font-medium">Kondisi</label><select id="asetKondisi" class="w-full border rounded-lg p-2"></select></div>
-            <div><label class="block text-sm font-medium">Status</label><select id="asetStatus" class="w-full border rounded-lg p-2"><option>Tersedia</option><option>Dipinjam</option><option>Perbaikan</option></select></div>
-            <div><label class="block text-sm font-medium">Tanggal Perolehan</label><input type="date" id="asetTanggal" class="w-full border rounded-lg p-2"></div>
-            <div><label class="block text-sm font-medium">Nilai (Rp)</label><input type="text" id="asetNilai" class="w-full border rounded-lg p-2" placeholder="0"></div>
-            <div class="grid grid-cols-2 gap-2"><div><label class="block text-sm">Masa Pakai (angka)</label><input type="number" id="asetMasaPakaiNilai" class="w-full border rounded-lg p-2" value="0"></div><div><label class="block text-sm">Satuan</label><select id="asetMasaPakaiSatuan" class="w-full border rounded-lg p-2"><option value="">Tidak ada</option><option value="Hari">Hari</option><option value="Bulan">Bulan</option><option value="Tahun">Tahun</option></select></div></div>
-            <div><label class="block text-sm font-medium">Foto Aset (Upload)</label><input type="file" id="asetGambarFile" accept="image/*" class="w-full border rounded-lg p-2"><div id="previewGambar" class="mt-2 hidden"><img id="previewImg" class="image-preview"><button type="button" id="hapusPreview" class="text-xs text-red-500">Hapus</button></div></div>
-            <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-xl">Simpan Aset</button>
-        </form>
+    <!-- Modal Asset (sama) -->
+    <div id="assetModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 invisible opacity-0 transition-all px-2 sm:px-4" style="visibility:hidden;">
+        <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white border-b px-4 py-3 flex justify-between"><h3 id="modalTitle" class="text-lg font-semibold">Form Aset</h3><button id="closeModalBtn" class="text-gray-400 text-2xl">&times;</button></div>
+            <div class="p-4 sm:p-6">
+                <form id="assetForm"><input type="hidden" id="assetId">
+                    <div class="grid grid-cols-1 gap-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label>Kode Aset *</label><input type="text" id="kodeAset" class="w-full border rounded-xl px-3 py-2 text-sm" required></div><div><label>Nama Aset *</label><input type="text" id="namaAset" class="w-full border rounded-xl px-3 py-2 text-sm" required></div></div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label>Kategori</label><select id="kategoriSelect" class="w-full border rounded-xl px-3 py-2 text-sm"><option value="">Pilih Kategori</option></select><button type="button" id="addNewCategoryBtn" class="text-xs text-indigo-600 mt-1">+ Tambah baru</button></div><div><label>Lokasi</label><select id="lokasiSelect" class="w-full border rounded-xl px-3 py-2 text-sm"><option value="">Pilih Lokasi</option></select><button type="button" id="addNewLokasiBtn" class="text-xs text-indigo-600 mt-1">+ Tambah baru</button></div></div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label>Status</label><select id="status" class="w-full border rounded-xl px-3 py-2 text-sm"><option>Tersedia</option><option>Dipinjam</option><option>Rusak</option></select></div><div><label>Nilai Perolehan (Rp)</label><input type="text" id="nilaiRupiah" class="w-full border rounded-xl px-3 py-2 text-sm rupiah-input" placeholder="0"></div></div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label>Nilai Residu (Rp)</label><input type="text" id="nilaiResiduRupiah" class="w-full border rounded-xl px-3 py-2 text-sm rupiah-input" placeholder="0"></div><div><label>Tanggal Beli</label><input type="date" id="tanggalBeli" class="w-full border rounded-xl px-3 py-2 text-sm"></div></div>
+                        <div><label>Umur Ekonomis (tahun)</label><input type="number" id="umurTahun" class="w-full border rounded-xl px-3 py-2 text-sm" value="5" min="0"></div>
+                        <div><label>Foto Aset</label><input type="file" id="uploadGambar" accept="image/*" class="w-full border rounded-xl px-3 py-2 text-sm"><div class="mt-2 flex gap-2"><img id="imagePreviewTag" class="w-12 h-12 object-cover rounded border hidden"><span id="noImageText" class="text-xs text-gray-400">Belum ada gambar</span></div></div>
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6 pt-4 border-t"><button type="button" id="modalCancelBtn" class="px-4 py-2 border rounded-xl text-sm">Batal</button><button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm">Simpan</button></div>
+                </form>
+            </div>
+        </div>
     </div>
+
+    <div id="masterModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50"></div>
+    <div id="userModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50"></div>
+    <div id="printFilterModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50"></div>
+    <div id="qrDetailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50"></div>
+    <div id="printArea" style="display:none;"></div>
 </div>
-
-<!-- Area Cetak Template Dinding (tersembunyi) -->
-<div id="printArea" style="display: none;"></div>
-
-<div id="toast" class="toast hidden"></div>
 
 <script>
-    // ========== KONFIGURASI ==========
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyIxd3aogd6p1VcjE3rKFbzjOJYIi6Y5LTYE9wXo7nBx6GlXER-haFoW51-30YyNt0/exec"; // GANTI DENGAN URL DEPLOY ANDA
-    let authToken = localStorage.getItem('authToken');
-    let currentUser = null;
-    let asetData = [], peminjamanData = [];
-    let chartKategori, chartLokasi;
+// ======================== DATA & STORAGE ========================
+let assets = [];
+let categories = ["Elektronik", "Furniture", "AV", "IT"];
+let locations = ["Ruang 1", "Gudang", "Meeting Room", "Server Room"];
+let users = [
+    { id: "1", username: "admin", password: "admin", role: "admin" },
+    { id: "2", username: "user", password: "user", role: "user" }
+];
+let currentUser = { role: "user", username: "" };
+let autoNumericPerolehan, autoNumericResidu;
 
-    function showToast(msg, isErr = false) {
-        let t = document.getElementById('toast');
-        if (!t) return;
-        t.innerText = msg;
-        t.style.background = isErr ? '#dc2626' : '#1f2937';
-        t.classList.remove('hidden');
-        setTimeout(() => t.classList.add('hidden'), 3000);
-    }
-    
-    function formatRupiah(angka) { 
-        let num = Number(angka) || 0;
-        return new Intl.NumberFormat('id-ID').format(num); 
-    }
-    
-    function parseRupiah(str) { 
-        if (!str) return 0;
-        let cleaned = str.replace(/\./g, '');
-        let parsed = parseInt(cleaned);
-        return isNaN(parsed) ? 0 : parsed;
-    }
-    
-    function escapeHtml(str) { 
-        if (!str) return ''; 
-        return String(str).replace(/[&<>]/g, m => m==='&'?'&amp;':m==='<'?'&lt;':'&gt;'); 
-    }
+const STORAGE_ASSETS = "office_assets_adv";
+const STORAGE_CATS = "office_categories_adv";
+const STORAGE_LOCS = "office_locations_adv";
+const STORAGE_USERS = "office_users_adv";
+const STORAGE_GSHEET_URL = "gsheet_webhook_url_adv";
 
-    async function apiCall(action, method = 'GET', body = null) {
-        const token = localStorage.getItem('authToken');
-        let url = `${SCRIPT_URL}?action=${action}`;
-        if (method === 'GET' && token) url += `&token=${token}`;
-        const options = { method, headers: { 'Content-Type': 'application/json' } };
-        if (body) options.body = JSON.stringify({ ...body, token });
-        else if (method === 'POST') options.body = JSON.stringify({ token });
-        try {
-            const res = await fetch(url, options);
-            const json = await res.json();
-            if (!json.success && json.message === "Silakan login terlebih dahulu") logout();
-            return json;
-        } catch(e) { 
-            showToast('Gagal koneksi ke server: ' + e.message, true); 
-            return null; 
-        }
-    }
-
-    async function login(username, password) {
-        try {
-            const res = await fetch(`${SCRIPT_URL}?action=login&data=${encodeURIComponent(JSON.stringify({username, password}))}`);
-            const result = await res.json();
-            if (result.success) {
-                authToken = result.data.token;
-                currentUser = { username: result.data.username, role: result.data.role, namaLengkap: result.data.namaLengkap };
-                localStorage.setItem('authToken', authToken);
-                localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                document.getElementById('loginPage').classList.add('hidden');
-                document.getElementById('mainApp').classList.remove('hidden');
-                document.getElementById('userInfo').innerHTML = `${currentUser.namaLengkap} (${currentUser.role})`;
-                if (currentUser.role === 'admin') {
-                    document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
-                    document.getElementById('adminMenu').classList.remove('hidden');
-                }
-                await loadAllData();
-                showTab('dashboard');
-                showToast(`Selamat datang ${currentUser.namaLengkap}`);
-            } else {
-                showToast(result.message, true);
-            }
-        } catch(e) {
-            showToast('Login gagal: ' + e.message, true);
-        }
-    }
-    
-    async function logout() { 
-        await apiCall('logout','POST'); 
-        localStorage.clear(); 
-        location.reload(); 
-    }
-
-    async function loadAllData() {
-        try {
-            const [asetRes, peminjamanRes] = await Promise.all([apiCall('getAll'), apiCall('getAllPeminjaman')]);
-            if (asetRes?.success) asetData = Array.isArray(asetRes.data) ? asetRes.data : [];
-            if (peminjamanRes?.success) peminjamanData = Array.isArray(peminjamanRes.data) ? peminjamanRes.data : [];
-            renderAsetTable();
-            updateStats();
-            loadDropdowns();
-            loadAvailableAssets();
-            renderCharts();
-            renderLoansAndHistory();
-            if (currentUser?.role === 'admin') renderUsers();
-        } catch(e) {
-            console.error(e);
-            showToast('Gagal memuat data', true);
-        }
-    }
-    
-    function updateStats() {
-        const total = asetData.length;
-        const totalNilai = asetData.reduce((s,a) => s + (Number(a.nilai) || 0), 0);
-        const dipinjam = asetData.filter(a => a.status === 'Dipinjam').length;
-        const tersedia = asetData.filter(a => a.status === 'Tersedia').length;
-        const expired = asetData.filter(a => a.statusMasaPakai === 'Kadaluarsa').length;
-        document.getElementById('statTotalAset').innerText = total;
-        document.getElementById('statTotalNilai').innerText = 'Rp' + formatRupiah(totalNilai);
-        document.getElementById('statDipinjam').innerText = dipinjam;
-        document.getElementById('statTersedia').innerText = tersedia;
-        document.getElementById('statExpired').innerText = expired;
-    }
-    
-    function renderAsetTable() {
-        const search = document.getElementById('searchAset')?.value.toLowerCase() || '';
-        const filterKat = document.getElementById('filterKategori')?.value || '';
-        const filterLok = document.getElementById('filterLokasi')?.value || '';
-        let filtered = asetData.filter(a => {
-            const matchSearch = String(a.kodeAset || '').toLowerCase().includes(search) || String(a.namaBarang || '').toLowerCase().includes(search);
-            const matchKat = !filterKat || a.kategori === filterKat;
-            const matchLok = !filterLok || a.lokasi === filterLok;
-            return matchSearch && matchKat && matchLok;
-        });
-        const isAdmin = currentUser?.role === 'admin';
-        let html = '';
-        for (let a of filtered) {
-            html += `<tr class="border-b">
-                <td class="p-3">${a.gambar ? `<img src="${escapeHtml(a.gambar)}" class="w-10 h-10 object-cover rounded" onerror="this.src='https://placehold.co/400'">` : '<div class="w-10 h-10 bg-gray-100 rounded flex items-center justify-center"><i class="fas fa-image"></i></div>'}</td>
-                <td class="p-3 font-mono text-sm">${escapeHtml(String(a.kodeAset || ''))}</td>
-                <td class="p-3">${escapeHtml(String(a.namaBarang || ''))}</td>
-                <td class="p-3">${escapeHtml(String(a.kategori || '-'))}</td>
-                <td class="p-3">${escapeHtml(String(a.lokasi || '-'))}</td>
-                <td class="p-3">Rp ${formatRupiah(a.nilai)}</td>
-                <td class="p-3">${escapeHtml(String(a.status || 'Tersedia'))} ${a.statusMasaPakai === 'Kadaluarsa' ? '<span class="text-red-500 text-xs">(Kadaluarsa)</span>' : ''}</td>
-                <td class="p-3">${a.masaPakaiNilai ? a.masaPakaiNilai + ' ' + a.masaPakaiSatuan : '-'}</td>
-                ${isAdmin ? `<td class="p-3"><button onclick="editAset('${a.id}')" class="text-blue-600 mr-2"><i class="fas fa-edit"></i></button><button onclick="deleteAset('${a.id}')" class="text-red-600"><i class="fas fa-trash"></i></button></td>` : ''}
-             `;
-        }
-        document.getElementById('tableAset').innerHTML = html;
-    }
-
-    window.editAset = (id) => { 
-        const a = asetData.find(x => x.id == id); 
-        if(a) openModalAset(a); 
-    };
-    
-    window.deleteAset = async (id) => { 
-        if(confirm('Hapus aset ini?')) { 
-            const res = await apiCall('deleteAsset','POST',{id}); 
-            if(res?.success) { showToast('Aset dihapus'); loadAllData(); } 
-            else showToast(res?.message, true); 
-        } 
-    };
-    
-    function openModalAset(aset = null) {
-        const modal = document.getElementById('modalAset');
-        if (!modal) return;
-        modal.classList.remove('hidden');
-        if(aset) {
-            document.getElementById('asetId').value = aset.id;
-            document.getElementById('asetKode').value = aset.kodeAset || '';
-            document.getElementById('asetNama').value = aset.namaBarang || '';
-            document.getElementById('asetKategori').value = aset.kategori || '';
-            document.getElementById('asetLokasi').value = aset.lokasi || '';
-            document.getElementById('asetKondisi').value = aset.kondisi || 'Baik';
-            document.getElementById('asetStatus').value = aset.status || 'Tersedia';
-            document.getElementById('asetTanggal').value = aset.tanggalPerolehan || '';
-            document.getElementById('asetNilai').value = formatRupiah(aset.nilai || 0);
-            document.getElementById('asetMasaPakaiNilai').value = aset.masaPakaiNilai || 0;
-            document.getElementById('asetMasaPakaiSatuan').value = aset.masaPakaiSatuan || '';
-            if(aset.gambar) { 
-                document.getElementById('previewImg').src = aset.gambar; 
-                document.getElementById('previewGambar').classList.remove('hidden'); 
-            } else {
-                document.getElementById('previewGambar').classList.add('hidden');
-            }
-            document.getElementById('modalAsetTitle').innerText = 'Edit Aset';
-        } else {
-            document.getElementById('formAset').reset();
-            document.getElementById('asetId').value = '';
-            document.getElementById('asetStatus').value = 'Tersedia';
-            document.getElementById('previewGambar').classList.add('hidden');
-            document.getElementById('modalAsetTitle').innerText = 'Tambah Aset';
-        }
-    }
-    
-    async function submitAset(e) {
-        e.preventDefault();
-        const payload = {
-            action: 'saveAsset',
-            id: document.getElementById('asetId').value,
-            kodeAset: document.getElementById('asetKode').value,
-            namaBarang: document.getElementById('asetNama').value,
-            kategori: document.getElementById('asetKategori').value,
-            lokasi: document.getElementById('asetLokasi').value,
-            kondisi: document.getElementById('asetKondisi').value,
-            status: document.getElementById('asetStatus').value,
-            tanggalPerolehan: document.getElementById('asetTanggal').value,
-            nilai: parseRupiah(document.getElementById('asetNilai').value),
-            masaPakaiNilai: document.getElementById('asetMasaPakaiNilai').value,
-            masaPakaiSatuan: document.getElementById('asetMasaPakaiSatuan').value
-        };
-        const fileInput = document.getElementById('asetGambarFile');
-        if (fileInput.files.length) {
-            const reader = new FileReader();
-            reader.onload = async function() {
-                payload.imageBase64 = reader.result;
-                const res = await apiCall('saveAsset', 'POST', payload);
-                if(res?.success) { showToast(res.message); closeModal(); loadAllData(); }
-                else showToast(res?.message, true);
-            };
-            reader.readAsDataURL(fileInput.files[0]);
-        } else {
-            const res = await apiCall('saveAsset', 'POST', payload);
-            if(res?.success) { showToast(res.message); closeModal(); loadAllData(); }
-            else showToast(res?.message, true);
-        }
-    }
-    
-    function closeModal() { 
-        const modal = document.getElementById('modalAset');
-        if (modal) modal.classList.add('hidden'); 
-    }
-    
-    async function loadDropdowns() {
-        const [katRes, lokRes, kondRes] = await Promise.all([apiCall('getKategori'), apiCall('getLokasi'), apiCall('getKondisi')]);
-        if(katRes?.success) {
-            const opts = '<option value="">Semua Kategori</option>' + katRes.data.map(k=>`<option>${escapeHtml(k)}</option>`).join('');
-            document.getElementById('filterKategori').innerHTML = opts;
-            document.getElementById('asetKategori').innerHTML = katRes.data.map(k=>`<option>${escapeHtml(k)}</option>`).join('');
-        }
-        if(lokRes?.success) {
-            const opts = '<option value="">Semua Lokasi</option>' + lokRes.data.map(l=>`<option>${escapeHtml(l)}</option>`).join('');
-            document.getElementById('filterLokasi').innerHTML = opts;
-            document.getElementById('asetLokasi').innerHTML = lokRes.data.map(l=>`<option>${escapeHtml(l)}</option>`).join('');
-        }
-        if(kondRes?.success) document.getElementById('asetKondisi').innerHTML = kondRes.data.map(k=>`<option>${escapeHtml(k)}</option>`).join('');
-    }
-    
-    function loadAvailableAssets() {
-        let select = document.getElementById('pinjamAsetId');
-        if(!select) return;
-        let available = asetData.filter(a => a.status === 'Tersedia');
-        select.innerHTML = '<option value="">Pilih Aset</option>' + available.map(a=>`<option value="${a.id}|${String(a.kodeAset || '')}|${String(a.namaBarang || '')}">${escapeHtml(String(a.kodeAset))} - ${escapeHtml(String(a.namaBarang))}</option>`).join('');
-    }
-    
-    async function pinjam() {
-        let val = document.getElementById('pinjamAsetId').value;
-        if(!val) return showToast('Pilih aset', true);
-        let parts = val.split('|');
-        let idAset = parts[0];
-        let kode = parts[1];
-        let nama = parts[2];
-        let peminjam = document.getElementById('pinjamNama').value.trim();
-        let tgl = document.getElementById('pinjamTanggal').value;
-        if(!peminjam || !tgl) return showToast('Lengkapi data peminjam dan tanggal', true);
-        let res = await apiCall('savePeminjaman','POST',{ idAset, kodeAset:kode, namaBarang:nama, peminjam, tglPinjam:tgl, status:'Dipinjam' });
-        if(res?.success) { showToast('Peminjaman berhasil'); loadAllData(); document.getElementById('pinjamAsetId').value=''; document.getElementById('pinjamNama').value=''; document.getElementById('pinjamTanggal').value=''; }
-        else showToast(res?.message, true);
-    }
-    
-    async function kembalikan(id, idAset) {
-        if(!confirm('Kembalikan aset?')) return;
-        let res = await apiCall('savePeminjaman','POST',{ id, idAset, status:'Dikembalikan', tglKembali:new Date().toISOString().split('T')[0] });
-        if(res?.success) { showToast('Aset dikembalikan'); loadAllData(); }
-        else showToast(res?.message, true);
-    }
-    
-    async function renderLoansAndHistory() {
-        let active = peminjamanData.filter(p => p.status !== 'Dikembalikan');
-        let html = '<table class="min-w-full"><thead class="bg-gray-100"><tr><th class="p-2">Aset</th><th class="p-2">Peminjam</th><th class="p-2">Tgl Pinjam</th><th class="p-2">Aksi</th></tr></thead><tbody>';
-        for (let p of active) {
-            let aset = asetData.find(a => a.id == p.idAset) || { namaBarang: p.namaBarang, kodeAset: p.kodeAset };
-            html += `<tr><td class="p-2">${escapeHtml(String(aset.namaBarang || p.namaBarang))} (${escapeHtml(String(aset.kodeAset || p.kodeAset))})</td><td class="p-2">${escapeHtml(p.peminjam)}</td><td class="p-2">${p.tglPinjam}</td><td class="p-2"><button onclick="kembalikan('${p.id}','${p.idAset}')" class="bg-green-600 text-white px-2 py-1 rounded">Kembalikan</button></td></tr>`;
-        }
-        html += '</tbody></table>';
-        document.getElementById('tablePeminjamanAktif').innerHTML = html;
-        
-        let history = peminjamanData.filter(p => p.status === 'Dikembalikan');
-        let historyHtml = '<table class="min-w-full"><thead class="bg-gray-100"><tr><th class="p-2">Aset</th><th class="p-2">Peminjam</th><th class="p-2">Tgl Pinjam</th><th class="p-2">Tgl Kembali</th></tr></thead><tbody>';
-        for (let p of history) {
-            let aset = asetData.find(a => a.id == p.idAset) || { namaBarang: p.namaBarang };
-            historyHtml += `<tr><td class="p-2">${escapeHtml(String(aset.namaBarang || p.namaBarang))}</td><td class="p-2">${escapeHtml(p.peminjam)}</td><td class="p-2">${p.tglPinjam}</td><td class="p-2">${p.tglKembali || '-'}</td></tr>`;
-        }
-        historyHtml += '</tbody></table>';
-        document.getElementById('tableHistory').innerHTML = historyHtml;
-    }
-    
-    async function renderUsers() {
-        let res = await apiCall('getUsers');
-        if(!res?.success) return;
-        let html = '';
-        for (let u of res.data) {
-            html += `<div class="flex justify-between p-2 border-b"><span>${escapeHtml(u.username)} (${escapeHtml(u.namaLengkap)}) - ${escapeHtml(u.role)}</span><button onclick="deleteUser('${u.id}')" class="text-red-600"><i class="fas fa-trash"></i></button></div>`;
-        }
-        document.getElementById('usersList').innerHTML = html;
-    }
-    
-    window.deleteUser = async (id) => { 
-        if(confirm('Hapus user?')){ 
-            let res = await apiCall('deleteUser','POST',{id}); 
-            if(res?.success) renderUsers(); 
-            else showToast(res?.message, true); 
-        } 
-    };
-    
-    document.getElementById('btnAddUser')?.addEventListener('click', async () => {
-        let username = document.getElementById('newUsername').value.trim();
-        let full = document.getElementById('newFullname').value.trim();
-        let pass = document.getElementById('newPassword').value;
-        let role = document.getElementById('newRole').value;
-        if(!username || !pass) return showToast('Username dan password wajib', true);
-        let res = await apiCall('saveUser','POST',{ username, namaLengkap:full, password:pass, role });
-        if(res?.success) { showToast('User ditambahkan'); renderUsers(); document.getElementById('newUsername').value=''; document.getElementById('newFullname').value=''; document.getElementById('newPassword').value=''; }
-        else showToast(res?.message, true);
+// ======================== FUNGSI PENYUSUTAN & EXPIRED ========================
+function updateExpiredStatus() {
+    const today = new Date();
+    assets.forEach(asset => {
+        if (asset.tanggalBeli && asset.umurTahun && asset.umurTahun > 0) {
+            const beli = new Date(asset.tanggalBeli);
+            const expiredDate = new Date(beli);
+            expiredDate.setFullYear(expiredDate.getFullYear() + asset.umurTahun);
+            asset.expired = expiredDate < today;
+        } else asset.expired = false;
     });
-    
-    async function renderCharts() {
-        let res = await apiCall('getChartData');
-        if(res?.success && res.data) {
-            if(chartKategori) chartKategori.destroy();
-            chartKategori = new Chart(document.getElementById('chartKategori'), { type:'doughnut', data:{ labels:res.data.kategori.labels, datasets:[{ data:res.data.kategori.data, backgroundColor:['#4f46e5','#f97316','#10b981','#ef4444'] }] } });
-            if(chartLokasi) chartLokasi.destroy();
-            chartLokasi = new Chart(document.getElementById('chartLokasi'), { type:'bar', data:{ labels:res.data.lokasi.labels, datasets:[{ label:'Jumlah', data:res.data.lokasi.data, backgroundColor:'#6366f1' }] } });
-        }
+}
+function hitungDepresiasi(asset) {
+    if (asset.expired) return { penyusutanPerTahun: 0, penyusutanPerBulan: 0, nilaiBuku: 1 };
+    const nilaiPerolehan = asset.nilai || 0;
+    const nilaiResidu = asset.nilaiResidu || 0;
+    const umurTahun = asset.umurTahun || 0;
+    if (umurTahun <= 0) return { penyusutanPerTahun: 0, penyusutanPerBulan: 0, nilaiBuku: nilaiPerolehan };
+    const penyusutanPerTahun = (nilaiPerolehan - nilaiResidu) / umurTahun;
+    const penyusutanPerBulan = penyusutanPerTahun / 12;
+    if (penyusutanPerTahun < 0) return { penyusutanPerTahun: 0, penyusutanPerBulan: 0, nilaiBuku: nilaiPerolehan };
+    let tahunBerlalu = 0;
+    if (asset.tanggalBeli) {
+        const beli = new Date(asset.tanggalBeli);
+        const sekarang = new Date();
+        tahunBerlalu = (sekarang.getFullYear() - beli.getFullYear()) + (sekarang.getMonth() - beli.getMonth()) / 12;
+        if (tahunBerlalu < 0) tahunBerlalu = 0;
     }
-    
-    function setupRupiah() {
-        let inp = document.getElementById('asetNilai');
-        if(inp) inp.addEventListener('input', function(){ let raw=this.value.replace(/[^0-9]/g,''); if(raw) this.value = formatRupiah(parseInt(raw)); else this.value=''; });
+    const akumulasi = penyusutanPerTahun * Math.min(tahunBerlalu, umurTahun);
+    let nilaiBuku = Math.max(nilaiPerolehan - akumulasi, nilaiResidu);
+    return { penyusutanPerTahun, penyusutanPerBulan, nilaiBuku };
+}
+
+// ======================== FUNGSI DASAR ========================
+function loadData() {
+    const storedAssets = localStorage.getItem(STORAGE_ASSETS);
+    if (storedAssets) assets = JSON.parse(storedAssets);
+    else {
+        assets = [
+            { id:"1", kode:"AST-001", nama:"Laptop Dell", kategori:"Elektronik", lokasi:"Ruang 1", status:"Tersedia", nilai:15000000, nilaiResidu:1500000, tanggalBeli:"2021-01-10", umurTahun:4, gambarBase64:"", expired:false },
+            { id:"2", kode:"AST-002", nama:"Proyektor", kategori:"AV", lokasi:"Meeting Room", status:"Dipinjam", nilai:8000000, nilaiResidu:800000, tanggalBeli:"2018-05-20", umurTahun:5, gambarBase64:"", expired:false }
+        ];
+        updateExpiredStatus();
+        saveAssets();
     }
+    updateExpiredStatus();
+    const storedCats = localStorage.getItem(STORAGE_CATS); if(storedCats) categories = JSON.parse(storedCats); else localStorage.setItem(STORAGE_CATS, JSON.stringify(categories));
+    const storedLocs = localStorage.getItem(STORAGE_LOCS); if(storedLocs) locations = JSON.parse(storedLocs); else localStorage.setItem(STORAGE_LOCS, JSON.stringify(locations));
+    const storedUsers = localStorage.getItem(STORAGE_USERS); if(storedUsers) users = JSON.parse(storedUsers); else localStorage.setItem(STORAGE_USERS, JSON.stringify(users));
+}
+function saveAssets() { localStorage.setItem(STORAGE_ASSETS, JSON.stringify(assets)); updateDashboardStats(); renderTable(); updateAllChartsAndStats(); }
+function saveMasterData() { localStorage.setItem(STORAGE_CATS, JSON.stringify(categories)); localStorage.setItem(STORAGE_LOCS, JSON.stringify(locations)); renderMasterLists(); refreshFilterOptions(); }
+function saveUsers() { localStorage.setItem(STORAGE_USERS, JSON.stringify(users)); renderUserTable(); }
+function formatRupiah(angka) { return "Rp " + angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
+function escapeHtml(str) { if (!str) return ""; return str.replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' })[m]); }
+function renderStatusBadge(s) {
+    if (s === "Tersedia") return '<span class="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs">Tersedia</span>';
+    if (s === "Dipinjam") return '<span class="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full text-xs">Dipinjam</span>';
+    return '<span class="bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs">Rusak</span>';
+}
+function updateDashboardStats() {
+    document.getElementById("totalAset").innerText = assets.length;
+    document.getElementById("statusTersedia").innerText = assets.filter(a => a.status === "Tersedia").length;
+    document.getElementById("statusDipinjam").innerText = assets.filter(a => a.status === "Dipinjam").length;
+    document.getElementById("expiredCount").innerText = assets.filter(a => a.expired).length;
+    const totalPerolehan = assets.reduce((s, a) => s + (a.nilai || 0), 0);
+    const totalBuku = assets.reduce((s, a) => s + hitungDepresiasi(a).nilaiBuku, 0);
+    document.getElementById("totalNilaiPerolehan").innerText = formatRupiah(totalPerolehan);
+    document.getElementById("totalNilaiBuku").innerText = formatRupiah(totalBuku);
+}
+function getFilteredAssets() {
+    let f = [...assets];
+    const s = document.getElementById("searchInput")?.value.toLowerCase();
+    if (s) f = f.filter(a => a.nama.toLowerCase().includes(s) || a.kode.toLowerCase().includes(s));
+    const stat = document.getElementById("filterStatus")?.value;
+    if (stat && stat !== "all") f = f.filter(a => a.status === stat);
+    const kat = document.getElementById("filterKategori")?.value;
+    if (kat && kat !== "all") f = f.filter(a => a.kategori === kat);
+    const lok = document.getElementById("filterLokasi")?.value;
+    if (lok && lok !== "all") f = f.filter(a => a.lokasi === lok);
+    return f;
+}
+function renderTable() {
+    const filtered = getFilteredAssets();
+    const tbody = document.getElementById("assetTableBody");
+    if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="11" class="text-center py-8">Tidak ada aset<\/td></tr>'; return; }
+    tbody.innerHTML = filtered.map(a => {
+        const dep = hitungDepresiasi(a);
+        const expiredClass = a.expired ? 'text-red-500 line-through' : '';
+        return `<tr class="border-b hover:bg-gray-50"><td class="px-3 py-2">${a.gambarBase64 ? `<img src="${a.gambarBase64}" class="w-10 h-10 object-cover rounded border">` : '<div class="w-10 h-10 bg-gray-100 rounded flex items-center justify-center"><i class="fas fa-image text-gray-400"></i></div>'}<\/td>
+        <td class="px-3 py-2"><div class="font-semibold">${escapeHtml(a.nama)}</div><div class="text-xs text-gray-500">${escapeHtml(a.kode)}</div><\/td>
+        <td class="px-3 py-2">${escapeHtml(a.kategori || '-')}<\/td><td class="px-3 py-2">${escapeHtml(a.lokasi || '-')}<\/td>
+        <td class="px-3 py-2">${renderStatusBadge(a.status)}<\/td><td class="px-3 py-2 ${expiredClass}">${formatRupiah(a.nilai)}<\/td>
+        <td class="px-3 py-2">${formatRupiah(dep.penyusutanPerTahun)}<\/td>
+        <td class="px-3 py-2">${formatRupiah(dep.penyusutanPerBulan)}<\/td>
+        <td class="px-3 py-2 font-mono">${formatRupiah(dep.nilaiBuku)}<\/td>
+        <td class="px-3 py-2"><i class="fas fa-qrcode text-xl text-indigo-500 qr-icon cursor-pointer" data-id="${a.id}"><\/i><\/td>
+        <td class="px-3 py-2">${currentUser.role === 'admin' ? `<button class="editBtn text-blue-600 mr-1" data-id="${a.id}"><i class="fas fa-edit"></i></button><button class="delBtn text-red-600" data-id="${a.id}"><i class="fas fa-trash"></i></button>` : '<span class="text-gray-400"><i class="fas fa-lock"></i></span>'}<\/td><\/tr>`;
+    }).join('');
+    document.querySelectorAll('.editBtn').forEach(btn => btn.addEventListener('click', () => openEditModal(btn.dataset.id)));
+    document.querySelectorAll('.delBtn').forEach(btn => btn.addEventListener('click', async () => { const confirm = await Swal.fire({ title:'Yakin hapus?', icon:'warning', showCancelButton:true }); if(confirm.isConfirmed) deleteAssetById(btn.dataset.id); }));
+    document.querySelectorAll('.qr-icon').forEach(icon => icon.addEventListener('click', () => showQrDetail(icon.dataset.id)));
+    updateDashboardStats();
+}
+async function deleteAssetById(id) { assets = assets.filter(a => a.id !== id); saveAssets(); await syncToGoogleSheets(false); Swal.fire('Terhapus','','success'); }
+function openEditModal(id) { const a = assets.find(x => x.id === id); if (!a) return; document.getElementById("assetId").value = a.id; document.getElementById("kodeAset").value = a.kode; document.getElementById("namaAset").value = a.nama; document.getElementById("kategoriSelect").value = a.kategori || ""; document.getElementById("lokasiSelect").value = a.lokasi || ""; document.getElementById("status").value = a.status; if(autoNumericPerolehan) autoNumericPerolehan.set(a.nilai||0); if(autoNumericResidu) autoNumericResidu.set(a.nilaiResidu||0); document.getElementById("tanggalBeli").value = a.tanggalBeli||""; document.getElementById("umurTahun").value = a.umurTahun||5; if(a.gambarBase64){ document.getElementById("imagePreviewTag").src = a.gambarBase64; document.getElementById("imagePreviewTag").classList.remove("hidden"); document.getElementById("noImageText").classList.add("hidden"); } else { document.getElementById("imagePreviewTag").classList.add("hidden"); document.getElementById("noImageText").classList.remove("hidden"); } document.getElementById("uploadGambar").value = ""; document.getElementById("modalTitle").innerHTML = "Edit Aset"; showAssetModal(true); }
+async function saveAssetHandler(e) { e.preventDefault(); const id = document.getElementById("assetId").value; const kode = document.getElementById("kodeAset").value.trim(); const nama = document.getElementById("namaAset").value.trim(); if (!kode || !nama) return Swal.fire('Error','Kode dan nama wajib','error'); const nilai = parseInt(autoNumericPerolehan.getNumericString()) || 0; const nilaiResidu = parseInt(autoNumericResidu.getNumericString()) || 0; const kategori = document.getElementById("kategoriSelect").value; const lokasi = document.getElementById("lokasiSelect").value; const status = document.getElementById("status").value; const tanggalBeli = document.getElementById("tanggalBeli").value; const umurTahun = parseInt(document.getElementById("umurTahun").value) || 0; const process = async (imgBase64) => { const assetData = { id: id || Date.now().toString(), kode, nama, kategori, lokasi, status, nilai, nilaiResidu, tanggalBeli, umurTahun, gambarBase64: imgBase64 || "" }; if(id) { const idx = assets.findIndex(a => a.id === id); if(idx !== -1) assets[idx] = assetData; } else assets.push(assetData); updateExpiredStatus(); saveAssets(); await syncToGoogleSheets(false); showAssetModal(false); Swal.fire('Berhasil','Aset tersimpan','success'); }; const file = document.getElementById("uploadGambar").files[0]; if(file) { const reader = new FileReader(); reader.onload = async (ev) => await process(ev.target.result); reader.readAsDataURL(file); } else { let oldImg = ""; if(id) { const ex = assets.find(a => a.id === id); if(ex) oldImg = ex.gambarBase64; } await process(oldImg); } }
+function showAssetModal(show) { const m = document.getElementById("assetModal"); if(show){ m.classList.remove("invisible","opacity-0"); m.style.visibility = "visible"; if(!autoNumericPerolehan) autoNumericPerolehan = new AutoNumeric('#nilaiRupiah', { decimalCharacter: ',', digitGroupSeparator: '.', decimalPlaces: 0 }); if(!autoNumericResidu) autoNumericResidu = new AutoNumeric('#nilaiResiduRupiah', { decimalCharacter: ',', digitGroupSeparator: '.', decimalPlaces: 0 }); } else { m.classList.add("invisible","opacity-0"); m.style.visibility = "hidden"; document.getElementById("assetForm").reset(); document.getElementById("assetId").value = ""; document.getElementById("imagePreviewTag").classList.add("hidden"); document.getElementById("noImageText").classList.remove("hidden"); } }
+function showQrDetail(assetId) { const asset = assets.find(a => a.id === assetId); if (!asset) return; const modal = document.getElementById("qrDetailModal"); modal.innerHTML = `<div class="bg-white rounded-2xl w-full max-w-md p-6 text-center"><h3 class="text-xl font-bold mb-2">Detail Aset & QR</h3><div id="qrDetailContent" class="mb-4 text-left"></div><div id="qrCodeContainer" class="flex justify-center my-3"></div><button id="closeQrModalBtn" class="bg-indigo-600 text-white px-5 py-2 rounded-xl mt-2">Tutup</button></div>`; const qrContainer = modal.querySelector("#qrCodeContainer"); const detailDiv = modal.querySelector("#qrDetailContent"); const url = `${window.location.origin}${window.location.pathname}?view=asset&id=${asset.id}`; new QRCode(qrContainer, { text: url, width: 200, height: 200 }); detailDiv.innerHTML = `<p><strong>${asset.nama}</strong><br>Kode: ${asset.kode}<br>Kategori: ${asset.kategori||'-'}<br>Lokasi: ${asset.lokasi||'-'}<br>Status: ${asset.status}<br>Nilai Perolehan: ${formatRupiah(asset.nilai)}<br>Penyusutan/bln: ${formatRupiah(hitungDepresiasi(asset).penyusutanPerBulan)}<br>Nilai Buku: ${formatRupiah(hitungDepresiasi(asset).nilaiBuku)}<br>Expired: ${asset.expired ? 'Ya (nilai Rp1)' : 'Tidak'}</p>`; modal.classList.remove("hidden"); modal.classList.add("flex"); document.getElementById("closeQrModalBtn").addEventListener("click", () => { modal.classList.add("hidden"); modal.classList.remove("flex"); }); }
+
+// ======================== ADVANCED CHARTS & STATS ========================
+let chartKategori, chartStatus, chartLokasi, chartTahun, chartDonut, chartTop;
+function initAdvancedCharts() {
+    chartKategori = new Chart(document.getElementById('chartKategori'), { type: 'bar', data: { labels: [], datasets: [{ label: 'Jumlah Aset', data: [], backgroundColor: 'rgba(99,102,241,0.7)' }] }, options: { responsive: true, maintainAspectRatio: true } });
+    chartStatus = new Chart(document.getElementById('chartStatus'), { type: 'pie', data: { labels: [], datasets: [{ data: [], backgroundColor: ['#22c55e','#eab308','#ef4444'] }] }, options: { responsive: true } });
+    chartLokasi = new Chart(document.getElementById('chartLokasi'), { type: 'bar', data: { labels: [], datasets: [{ label: 'Jumlah Aset', data: [], backgroundColor: 'rgba(168,85,247,0.7)' }] }, options: { indexAxis: 'y', responsive: true } });
+    chartTahun = new Chart(document.getElementById('chartTahun'), { type: 'line', data: { labels: [], datasets: [{ label: 'Total Nilai Buku (Rp)', data: [], borderColor: '#f97316', tension: 0.3, fill: false }] }, options: { responsive: true } });
+    chartDonut = new Chart(document.getElementById('chartDonut'), { type: 'doughnut', data: { labels: [], datasets: [{ data: [], backgroundColor: ['#3b82f6','#10b981','#8b5cf6','#f59e0b','#ef4444','#ec4899'] }] }, options: { responsive: true } });
+    chartTop = new Chart(document.getElementById('chartTop'), { type: 'bar', data: { labels: [], datasets: [{ label: 'Nilai Buku (Rp)', data: [], backgroundColor: '#facc15' }] }, options: { indexAxis: 'y', responsive: true } });
+}
+function updateAllChartsAndStats() {
+    if (!chartKategori) return;
+    const kategoriMap = new Map(); assets.forEach(a => { const k = a.kategori || 'Tidak ada'; kategoriMap.set(k, (kategoriMap.get(k)||0)+1); });
+    chartKategori.data.labels = Array.from(kategoriMap.keys()); chartKategori.data.datasets[0].data = Array.from(kategoriMap.values()); chartKategori.update();
+    const statusMap = new Map([['Tersedia',0],['Dipinjam',0],['Rusak',0]]); assets.forEach(a => { if(statusMap.has(a.status)) statusMap.set(a.status, statusMap.get(a.status)+1); });
+    chartStatus.data.labels = Array.from(statusMap.keys()); chartStatus.data.datasets[0].data = Array.from(statusMap.values()); chartStatus.update();
+    const lokasiMap = new Map(); assets.forEach(a => { const l = a.lokasi || 'Tidak ada'; lokasiMap.set(l, (lokasiMap.get(l)||0)+1); });
+    const sortedLokasi = Array.from(lokasiMap.keys()).sort(); chartLokasi.data.labels = sortedLokasi; chartLokasi.data.datasets[0].data = sortedLokasi.map(l => lokasiMap.get(l)); chartLokasi.update();
+    const tahunMap = new Map(); assets.forEach(a => { if(a.tanggalBeli && a.tanggalBeli.length>=4) { const tahun = a.tanggalBeli.substring(0,4); tahunMap.set(tahun, (tahunMap.get(tahun)||0) + hitungDepresiasi(a).nilaiBuku); } });
+    const tahunSorted = Array.from(tahunMap.keys()).sort(); chartTahun.data.labels = tahunSorted; chartTahun.data.datasets[0].data = tahunSorted.map(t => tahunMap.get(t)); chartTahun.update();
+    const nilaiBukuPerKat = new Map(); assets.forEach(a => { const kat = a.kategori || 'Tidak ada'; const buku = hitungDepresiasi(a).nilaiBuku; nilaiBukuPerKat.set(kat, (nilaiBukuPerKat.get(kat)||0) + buku); });
+    chartDonut.data.labels = Array.from(nilaiBukuPerKat.keys()); chartDonut.data.datasets[0].data = Array.from(nilaiBukuPerKat.values()); chartDonut.update();
+    const sortedByBuku = [...assets].sort((a,b) => hitungDepresiasi(b).nilaiBuku - hitungDepresiasi(a).nilaiBuku).slice(0,5);
+    chartTop.data.labels = sortedByBuku.map(a => a.nama.length > 20 ? a.nama.substring(0,18)+'...' : a.nama);
+    chartTop.data.datasets[0].data = sortedByBuku.map(a => hitungDepresiasi(a).nilaiBuku);
+    chartTop.update();
     
-    function setupPreview() {
-        let file = document.getElementById('asetGambarFile');
-        file?.addEventListener('change', function(e){
-            if(e.target.files && e.target.files[0]){
-                let reader = new FileReader();
-                reader.onload = function(ev){ document.getElementById('previewImg').src = ev.target.result; document.getElementById('previewGambar').classList.remove('hidden'); };
-                reader.readAsDataURL(e.target.files[0]);
-            } else document.getElementById('previewGambar').classList.add('hidden');
-        });
-        document.getElementById('hapusPreview')?.addEventListener('click', function(){ file.value=''; document.getElementById('previewGambar').classList.add('hidden'); });
+    let totalUmur = 0; let countUmur = 0;
+    assets.forEach(a => { if(a.umurTahun && a.umurTahun>0) { totalUmur += a.umurTahun; countUmur++; } });
+    const avgAge = countUmur ? (totalUmur / countUmur).toFixed(1) : 0;
+    document.getElementById("avgAge").innerText = avgAge;
+    let maxLoc = ''; let maxCount = 0;
+    lokasiMap.forEach((val, key) => { if(val > maxCount) { maxCount = val; maxLoc = key; } });
+    document.getElementById("topLocation").innerText = maxLoc ? `${maxLoc} (${maxCount} aset)` : '-';
+    const totalDepresiasiPerTahun = assets.reduce((sum, a) => sum + hitungDepresiasi(a).penyusutanPerTahun, 0);
+    document.getElementById("totalDepresiasi").innerText = formatRupiah(totalDepresiasiPerTahun);
+}
+
+// ======================== EKSPOR EXCEL ========================
+function exportToExcel() {
+    const filtered = getFilteredAssets();
+    if (filtered.length === 0) {
+        Swal.fire('Info', 'Tidak ada data untuk diekspor', 'info');
+        return;
     }
-    
-    // Fungsi Cetak Tabel (filtered)
-    function printTable() {
-        const search = document.getElementById('searchAset')?.value.toLowerCase() || '';
-        const filterKat = document.getElementById('filterKategori')?.value || '';
-        const filterLok = document.getElementById('filterLokasi')?.value || '';
-        let filtered = asetData.filter(a => {
-            const matchSearch = String(a.kodeAset || '').toLowerCase().includes(search) || String(a.namaBarang || '').toLowerCase().includes(search);
-            const matchKat = !filterKat || a.kategori === filterKat;
-            const matchLok = !filterLok || a.lokasi === filterLok;
-            return matchSearch && matchKat && matchLok;
-        });
-        let printHtml = `
-            <html><head><title>Laporan Aset</title><style>
-                body { font-family: Arial, sans-serif; margin: 20px; }
-                h2 { text-align: center; }
-                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                th { background-color: #f2f2f2; }
-                .footer { margin-top: 30px; text-align: center; font-size: 12px; }
-            </style></head>
-            <body>
-                <h2>Laporan Inventaris Aset</h2>
-                <p>Tanggal: ${new Date().toLocaleDateString('id-ID')}</p>
-                <p>Filter: Kategori=${filterKat || 'Semua'}, Lokasi=${filterLok || 'Semua'}</p>
-                <table>
-                    <thead><tr><th>Kode</th><th>Nama Barang</th><th>Kategori</th><th>Lokasi</th><th>Nilai</th><th>Status</th><th>Masa Pakai</th></tr></thead>
-                    <tbody>
-        `;
-        filtered.forEach(a => {
-            printHtml += `<tr>
-                <td>${escapeHtml(a.kodeAset)}</td>
-                <td>${escapeHtml(a.namaBarang)}</td>
-                <td>${escapeHtml(a.kategori)}</td>
-                <td>${escapeHtml(a.lokasi)}</td>
-                <td>Rp ${formatRupiah(a.nilai)}</td>
-                <td>${a.status} ${a.statusMasaPakai === 'Kadaluarsa' ? '(Kadaluarsa)' : ''}</td>
-                <td>${a.masaPakaiNilai ? a.masaPakaiNilai + ' ' + a.masaPakaiSatuan : '-'}</td>
-            </tr>`;
-        });
-        printHtml += `</tbody></table><div class="footer">Dicetak dari Aplikasi AsetKantor Pro</div></body></html>`;
-        let win = window.open();
-        win.document.write(printHtml);
-        win.document.close();
-        win.print();
-    }
-    
-    // Fungsi Cetak Template Dinding (format poster)
-    function printWallTemplate() {
-        let html = `
-            <html><head><title>Template Dinding Aset</title><style>
-                body { font-family: 'Courier New', monospace; margin: 0; padding: 20px; background: white; }
-                .poster { max-width: 800px; margin: 0 auto; border: 3px solid #1f2937; padding: 20px; border-radius: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-                h1 { text-align: center; color: #1f2937; font-size: 28px; margin-bottom: 5px; }
-                .subtitle { text-align: center; color: #4b5563; margin-bottom: 30px; }
-                .qr-area { text-align: center; margin: 20px 0; }
-                .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
-                .info-item { border-bottom: 1px dashed #ccc; padding: 8px; }
-                .label { font-weight: bold; color: #374151; }
-                .footer { text-align: center; margin-top: 30px; font-size: 12px; color: #6b7280; }
-                @media print {
-                    body { margin: 0; padding: 0; }
-                    .poster { box-shadow: none; border: 1px solid #ccc; }
-                }
-            </style>
-            <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"><\/script>
-            </head>
-            <body>
-                <div class="poster">
-                    <h1>📋 INVENTARIS ASET KANTOR</h1>
-                    <div class="subtitle">Scan QR Code untuk melihat detail aset</div>
-                    <div class="qr-area" id="qrContainer"></div>
-                    <div class="info-grid">
-                        <div class="info-item"><span class="label">Kode Aset:</span> <span id="kodeAset"></span></div>
-                        <div class="info-item"><span class="label">Nama Barang:</span> <span id="namaBarang"></span></div>
-                        <div class="info-item"><span class="label">Kategori:</span> <span id="kategori"></span></div>
-                        <div class="info-item"><span class="label">Lokasi:</span> <span id="lokasi"></span></div>
-                        <div class="info-item"><span class="label">Kondisi:</span> <span id="kondisi"></span></div>
-                        <div class="info-item"><span class="label">Status:</span> <span id="status"></span></div>
-                        <div class="info-item"><span class="label">Nilai:</span> <span id="nilai"></span></div>
-                        <div class="info-item"><span class="label">Masa Pakai:</span> <span id="masaPakai"></span></div>
-                        <div class="info-item"><span class="label">Tanggal Perolehan:</span> <span id="tanggal"></span></div>
-                    </div>
-                    <div class="footer">Dicetak dari Sistem AsetKantor Pro | ${new Date().toLocaleDateString('id-ID')}</div>
-                </div>
-                <script>
-                    let urlParams = new URLSearchParams(window.location.search);
-                    let kode = urlParams.get('kode');
-                    if(kode) {
-                        // Ambil data dari localStorage (sederhana)
-                        let asetData = JSON.parse(localStorage.getItem('asetForPrint') || '[]');
-                        let aset = asetData.find(a => a.kodeAset === kode);
-                        if(aset) {
-                            document.getElementById('kodeAset').innerText = aset.kodeAset;
-                            document.getElementById('namaBarang').innerText = aset.namaBarang;
-                            document.getElementById('kategori').innerText = aset.kategori;
-                            document.getElementById('lokasi').innerText = aset.lokasi;
-                            document.getElementById('kondisi').innerText = aset.kondisi;
-                            document.getElementById('status').innerText = aset.status;
-                            document.getElementById('nilai').innerText = 'Rp ' + new Intl.NumberFormat('id-ID').format(aset.nilai);
-                            document.getElementById('masaPakai').innerText = aset.masaPakaiNilai ? aset.masaPakaiNilai + ' ' + aset.masaPakaiSatuan : '-';
-                            document.getElementById('tanggal').innerText = aset.tanggalPerolehan;
-                            new QRCode(document.getElementById('qrContainer'), { text: window.location.href, width: 150, height: 150 });
-                        } else { document.getElementById('qrContainer').innerHTML = '<p>Data tidak ditemukan</p>'; }
-                    } else { document.getElementById('qrContainer').innerHTML = '<p>Pilih aset terlebih dahulu</p>'; }
-                <\/script>
-            </body>
-            </html>
-        `;
-        let win = window.open();
-        win.document.write(html);
-        win.document.close();
-        // Simpan data aset ke localStorage window
-        win.localStorage.setItem('asetForPrint', JSON.stringify(asetData));
-        // Redirect ke URL dengan parameter kode (pilih aset)
-        let kode = prompt("Masukkan Kode Aset yang akan dicetak templatenya (contoh: AST-001):");
-        if(kode) {
-            win.location.href = win.location.href.split('?')[0] + '?kode=' + encodeURIComponent(kode);
-        } else {
-            win.close();
-        }
-    }
-    
-    function showTab(tab) {
-        document.querySelectorAll('.tab-content').forEach(el=>el.classList.add('hidden'));
-        const activeTab = document.getElementById(tab+'Tab');
-        if (activeTab) activeTab.classList.remove('hidden');
-        const titles = {dashboard:'Dashboard',aset:'Data Aset',peminjaman:'Peminjaman',history:'History',users:'Kelola User'};
-        document.getElementById('pageTitle').innerText = titles[tab] || 'Dashboard';
-        if(tab==='peminjaman') loadAvailableAssets();
-        if(tab==='users' && currentUser?.role==='admin') renderUsers();
-    }
-    
-    // Event Listeners
-    document.getElementById('loginForm')?.addEventListener('submit', async(e)=>{ e.preventDefault(); await login(document.getElementById('loginUsername').value, document.getElementById('loginPassword').value); });
-    document.getElementById('btnTambahAset')?.addEventListener('click',()=>openModalAset(null));
-    document.getElementById('closeModalAset')?.addEventListener('click', closeModal);
-    document.getElementById('formAset')?.addEventListener('submit', submitAset);
-    document.getElementById('searchAset')?.addEventListener('input', renderAsetTable);
-    document.getElementById('filterKategori')?.addEventListener('change', renderAsetTable);
-    document.getElementById('filterLokasi')?.addEventListener('change', renderAsetTable);
-    document.getElementById('btnPinjam')?.addEventListener('click', pinjam);
-    document.getElementById('menuToggle')?.addEventListener('click',()=>document.getElementById('sidebar').classList.toggle('-translate-x-full'));
-    document.getElementById('btnCetakFilter')?.addEventListener('click', printTable);
-    document.getElementById('btnCetakTemplate')?.addEventListener('click', printWallTemplate);
-    
-    setupRupiah();
-    setupPreview();
-    
-    // Auto login check
-    if(authToken && localStorage.getItem('currentUser')) {
-        currentUser = JSON.parse(localStorage.getItem('currentUser'));
-        document.getElementById('loginPage').classList.add('hidden');
-        document.getElementById('mainApp').classList.remove('hidden');
-        document.getElementById('userInfo').innerHTML = `${currentUser.namaLengkap} (${currentUser.role})`;
-        if(currentUser.role==='admin') { document.querySelectorAll('.admin-only').forEach(el=>el.classList.remove('hidden')); document.getElementById('adminMenu').classList.remove('hidden'); }
-        loadAllData();
-        showTab('dashboard');
-    } else {
-        document.getElementById('loginPage').classList.remove('hidden');
-        document.getElementById('mainApp').classList.add('hidden');
-    }
+    const data = filtered.map(a => {
+        const dep = hitungDepresiasi(a);
+        return {
+            "Kode": a.kode,
+            "Nama": a.nama,
+            "Kategori": a.kategori || '-',
+            "Lokasi": a.lokasi || '-',
+            "Status": a.status,
+            "Nilai Perolehan": a.nilai,
+            "Nilai Residu": a.nilaiResidu || 0,
+            "Tanggal Beli": a.tanggalBeli || '',
+            "Umur (tahun)": a.umurTahun || 0,
+            "Penyusutan/tahun": dep.penyusutanPerTahun,
+            "Penyusutan/bulan": dep.penyusutanPerBulan,
+            "Nilai Buku": dep.nilaiBuku,
+            "Expired": a.expired ? 'Ya' : 'Tidak'
+        };
+    });
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Aset Kantor");
+    XLSX.writeFile(wb, `laporan_aset_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.xlsx`);
+    Swal.fire('Berhasil', 'File Excel telah diunduh', 'success');
+}
+
+// ======================== MASTER DATA, USER, PRINT, BACKUP, GSHEET ========================
+// (Fungsi refreshFilterOptions, renderMasterLists, renderUserTable, editUser, deleteUser, addNewUser, showPrintDialog, backupData, restoreData, syncToGoogleSheets, setupGSheetUrl, importFromGoogleSheets sama seperti sebelumnya, hanya disesuaikan event export)
+function refreshFilterOptions() {
+    const catSelect = document.getElementById("filterKategori"); const locSelect = document.getElementById("filterLokasi");
+    if(catSelect) catSelect.innerHTML = '<option value="all">Semua Kategori</option>'+categories.map(c=>`<option value="${c}">${c}</option>`).join('');
+    if(locSelect) locSelect.innerHTML = '<option value="all">Semua Lokasi</option>'+locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+    const katSelect = document.getElementById("kategoriSelect"); const lokSelect = document.getElementById("lokasiSelect");
+    if(katSelect) katSelect.innerHTML = '<option value="">Pilih Kategori</option>'+categories.map(c=>`<option value="${c}">${c}</option>`).join('');
+    if(lokSelect) lokSelect.innerHTML = '<option value="">Pilih Lokasi</option>'+locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+}
+function renderMasterLists() { const masterModal = document.getElementById("masterModal"); masterModal.innerHTML = `<div class="bg-white rounded-2xl w-full max-w-3xl p-6"><div class="flex justify-between border-b pb-3"><h3 class="text-xl font-bold"><i class="fas fa-tags"></i> Kelola Master Data</h3><button id="closeMasterBtn" class="text-gray-500 text-2xl">&times;</button></div><div class="grid md:grid-cols-2 gap-6 mt-4"><div><h4 class="font-semibold mb-2">Kategori</h4><div class="flex gap-2 mb-2"><input type="text" id="newKategoriInput" class="border rounded-lg px-3 py-1 flex-1"><button id="addKategoriBtn" class="bg-green-500 text-white px-3 rounded-lg">Tambah</button></div><ul id="kategoriList" class="space-y-1 max-h-60 overflow-auto border rounded-lg p-2"></ul></div><div><h4 class="font-semibold mb-2">Lokasi</h4><div class="flex gap-2 mb-2"><input type="text" id="newLokasiInput" class="border rounded-lg px-3 py-1 flex-1"><button id="addLokasiBtn" class="bg-green-500 text-white px-3 rounded-lg">Tambah</button></div><ul id="lokasiList" class="space-y-1 max-h-60 overflow-auto border rounded-lg p-2"></ul></div></div><div class="mt-4 text-right"><button id="closeMasterFooterBtn" class="bg-gray-200 px-5 py-2 rounded-xl">Tutup</button></div></div>`; const katUl = document.getElementById("kategoriList"); const lokUl = document.getElementById("lokasiList"); katUl.innerHTML = categories.map(c => `<li class="flex justify-between p-2 border-b"><span>${c}</span><button class="delKatBtn text-red-500" data-name="${c}"><i class="fas fa-trash"></i></button></li>`).join(''); lokUl.innerHTML = locations.map(l => `<li class="flex justify-between p-2 border-b"><span>${l}</span><button class="delLokBtn text-red-500" data-name="${l}"><i class="fas fa-trash"></i></button></li>`).join(''); document.querySelectorAll('.delKatBtn').forEach(btn => btn.addEventListener('click', () => { let val = btn.dataset.name; categories = categories.filter(c => c !== val); saveMasterData(); refreshFilterOptions(); renderTable(); Swal.fire('Terhapus','','info'); })); document.querySelectorAll('.delLokBtn').forEach(btn => btn.addEventListener('click', () => { let val = btn.dataset.name; locations = locations.filter(l => l !== val); saveMasterData(); refreshFilterOptions(); renderTable(); Swal.fire('Terhapus','','info'); })); document.getElementById("addKategoriBtn").addEventListener("click", () => { let val = document.getElementById("newKategoriInput").value.trim(); if(val && !categories.includes(val)){ categories.push(val); saveMasterData(); refreshFilterOptions(); renderTable(); document.getElementById("newKategoriInput").value = ""; Swal.fire('Berhasil','','success'); } else Swal.fire('Gagal','','warning'); }); document.getElementById("addLokasiBtn").addEventListener("click", () => { let val = document.getElementById("newLokasiInput").value.trim(); if(val && !locations.includes(val)){ locations.push(val); saveMasterData(); refreshFilterOptions(); renderTable(); document.getElementById("newLokasiInput").value = ""; Swal.fire('Berhasil','','success'); } else Swal.fire('Gagal','','warning'); }); document.getElementById("closeMasterBtn").addEventListener("click", () => masterModal.classList.add("hidden")); document.getElementById("closeMasterFooterBtn").addEventListener("click", () => masterModal.classList.add("hidden")); masterModal.classList.remove("hidden"); masterModal.classList.add("flex"); }
+function renderUserTable() { const userModal = document.getElementById("userModal"); userModal.innerHTML = `<div class="bg-white rounded-2xl w-full max-w-4xl p-6"><div class="flex justify-between border-b pb-3"><h3 class="text-xl font-bold"><i class="fas fa-users"></i> Manajemen User</h3><button id="closeUserModalBtn" class="text-gray-500 text-2xl">&times;</button></div><div class="mt-4"><button id="addUserBtn" class="bg-green-600 text-white px-4 py-2 rounded-xl mb-4"><i class="fas fa-user-plus"></i> Tambah User</button><div><table class="min-w-full border"><thead class="bg-gray-100"><tr><th class="p-2">Username</th><th class="p-2">Role</th><th class="p-2">Aksi</th></tr></thead><tbody id="userTableBody"></tbody></table></div></div></div>`; const tbody = document.getElementById("userTableBody"); tbody.innerHTML = users.filter(u => u.username !== currentUser.username || currentUser.role === 'admin').map(u => `<tr><td class="p-2">${escapeHtml(u.username)}<\/td><td class="p-2">${u.role === 'admin' ? 'Admin' : 'User'}<\/td><td class="p-2">${currentUser.role === 'admin' ? `<button class="editUserBtn text-blue-600 mr-2" data-id="${u.id}"><i class="fas fa-edit"></i></button><button class="deleteUserBtn text-red-600" data-id="${u.id}"><i class="fas fa-trash"></i></button>` : '-'}<\/td><\/tr>`).join(''); document.querySelectorAll('.editUserBtn').forEach(btn => btn.addEventListener('click', () => editUser(btn.dataset.id))); document.querySelectorAll('.deleteUserBtn').forEach(btn => btn.addEventListener('click', () => deleteUser(btn.dataset.id))); document.getElementById("addUserBtn").addEventListener("click", addNewUser); document.getElementById("closeUserModalBtn").addEventListener("click", () => userModal.classList.add("hidden")); userModal.classList.remove("hidden"); userModal.classList.add("flex"); }
+function editUser(id) { const user = users.find(u => u.id === id); if(!user) return; Swal.fire({ title: 'Edit User', html: `<input id="swal-username" class="swal2-input" value="${user.username}"><select id="swal-role" class="swal2-select"><option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option><option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option></select><input id="swal-password" class="swal2-input" placeholder="Password baru (kosongkan jika tidak diubah)" type="password">`, preConfirm: () => { const newUsername = document.getElementById('swal-username').value; const newRole = document.getElementById('swal-role').value; const newPass = document.getElementById('swal-password').value; if(!newUsername) Swal.showValidationMessage('Username wajib'); else { user.username = newUsername; user.role = newRole; if(newPass) user.password = newPass; saveUsers(); Swal.fire('Sukses','','success'); } } }); }
+function deleteUser(id) { const user = users.find(u => u.id === id); if(user.username === 'admin') return Swal.fire('Error','Tidak bisa hapus admin utama','error'); Swal.fire({ title: 'Yakin hapus?', icon:'warning', showCancelButton: true }).then(res => { if(res.isConfirmed) { users = users.filter(u => u.id !== id); saveUsers(); Swal.fire('Terhapus','','success'); } }); }
+function addNewUser() { Swal.fire({ title: 'Tambah User Baru', html: `<input id="swal-username" class="swal2-input" placeholder="Username"><select id="swal-role" class="swal2-select"><option value="user">User</option><option value="admin">Admin</option></select><input id="swal-password" class="swal2-input" placeholder="Password" type="password">`, preConfirm: () => { const uname = document.getElementById('swal-username').value; const role = document.getElementById('swal-role').value; const pass = document.getElementById('swal-password').value; if(!uname || !pass) Swal.showValidationMessage('Username dan password wajib'); else if(users.find(u => u.username === uname)) Swal.showValidationMessage('Username sudah ada'); else { users.push({ id: Date.now().toString(), username: uname, password: pass, role }); saveUsers(); Swal.fire('Sukses','User ditambahkan','success'); } } }); }
+function showPrintDialog() { const modal = document.getElementById("printFilterModal"); modal.innerHTML = `<div class="bg-white rounded-2xl w-full max-w-md p-6"><h3 class="text-xl font-bold mb-4">Cetak Laporan Aset</h3><div class="mb-3"><label>Filter Kategori</label><select id="printKategori" class="w-full border rounded-xl p-2"><option value="all">Semua Kategori</option>${categories.map(c => `<option value="${c}">${c}</option>`).join('')}</select></div><div class="mb-3"><label>Filter Lokasi</label><select id="printLokasi" class="w-full border rounded-xl p-2"><option value="all">Semua Lokasi</option>${locations.map(l => `<option value="${l}">${l}</option>`).join('')}</select></div><div class="flex justify-end gap-3 mt-4"><button id="cancelPrintBtn" class="px-4 py-2 border rounded-xl">Batal</button><button id="doPrintBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-xl">Cetak</button></div></div>`; document.getElementById("cancelPrintBtn").addEventListener("click", () => modal.classList.add("hidden")); document.getElementById("doPrintBtn").addEventListener("click", () => { const kat = document.getElementById("printKategori").value; const lok = document.getElementById("printLokasi").value; let filtered = [...assets]; if(kat !== 'all') filtered = filtered.filter(a => a.kategori === kat); if(lok !== 'all') filtered = filtered.filter(a => a.lokasi === lok); const printDiv = document.getElementById("printArea"); printDiv.style.display = "block"; printDiv.innerHTML = `<div class="text-center mb-6"><h1 class="text-2xl font-bold">Laporan Data Aset Kantor</h1><p>Tanggal: ${new Date().toLocaleDateString('id-ID')}</p><p>Filter: Kategori ${kat === 'all' ? 'Semua' : kat}, Lokasi ${lok === 'all' ? 'Semua' : lok}</p></div><table border="1" cellpadding="8" style="width:100%; border-collapse:collapse;"><thead><tr><th>Kode</th><th>Nama</th><th>Kategori</th><th>Lokasi</th><th>Status</th><th>Nilai Perolehan</th><th>Nilai Buku</th></tr></thead><tbody>${filtered.map(a => `<tr><td>${escapeHtml(a.kode)}<\/td><td>${escapeHtml(a.nama)}<\/td><td>${escapeHtml(a.kategori||'-')}<\/td><td>${escapeHtml(a.lokasi||'-')}<\/td><td>${a.status}<\/td><td>${formatRupiah(a.nilai)}<\/td><td>${formatRupiah(hitungDepresiasi(a).nilaiBuku)}<\/td><\/tr>`).join('')}</tbody><tr><div class="mt-4 text-right"><strong>Total Aset: ${filtered.length}</strong><br><strong>Total Nilai Buku: ${formatRupiah(filtered.reduce((s,a)=>s+hitungDepresiasi(a).nilaiBuku,0))}</strong></div>`; window.print(); printDiv.style.display = "none"; modal.classList.add("hidden"); }); modal.classList.remove("hidden"); modal.classList.add("flex"); }
+function backupData() { const backup = { version: "1.0", timestamp: new Date().toISOString(), assets, categories, locations, users, gsheetUrl: localStorage.getItem(STORAGE_GSHEET_URL) || "" }; const blob = new Blob([JSON.stringify(backup, null, 2)], {type:"application/json"}); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `backup_aset_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.json`; a.click(); URL.revokeObjectURL(a.href); Swal.fire('Backup Berhasil','File JSON diunduh','success'); }
+function restoreData() { Swal.fire({ title: 'Restore Data', text: 'Pilih file backup (.json)', input: 'file', inputAttributes: { accept: 'application/json' }, showCancelButton: true, preConfirm: (file) => { return new Promise((resolve) => { const reader = new FileReader(); reader.onload = e => { try { const backup = JSON.parse(e.target.result); if(!backup.assets) throw new Error(); resolve(backup); } catch { Swal.showValidationMessage('File tidak valid'); resolve(null); } }; reader.readAsText(file); }); } }).then(res => { if(res.isConfirmed && res.value) { const b = res.value; assets = b.assets; categories = b.categories; locations = b.locations; users = b.users; if(b.gsheetUrl) localStorage.setItem(STORAGE_GSHEET_URL, b.gsheetUrl); updateExpiredStatus(); saveAssets(); saveMasterData(); saveUsers(); refreshFilterOptions(); renderTable(); updateAllChartsAndStats(); Swal.fire('Restore Sukses','Data dipulihkan','success'); } }); }
+async function syncToGoogleSheets(showAlert = true) { const url = localStorage.getItem(STORAGE_GSHEET_URL); if(!url) { if(showAlert) Swal.fire('Info','URL GSheet belum diatur','info'); return false; } try { await fetch(url, { method:'POST', mode:'no-cors', body: JSON.stringify({ action:'sync', data:assets, categories, locations }) }); if(showAlert) Swal.fire('Berhasil','Data dikirim ke GSheet','success'); return true; } catch { if(showAlert) Swal.fire('Gagal','Cek URL','error'); return false; } }
+async function setupGSheetUrl() { const { value: url } = await Swal.fire({ title: 'URL Web App GSheet', input: 'text', inputPlaceholder: 'https://script.google.com/macros/s/.../exec', showCancelButton: true }); if(url) { localStorage.setItem(STORAGE_GSHEET_URL, url); Swal.fire('Tersimpan','URL disimpan','success'); await syncToGoogleSheets(true); } }
+async function importFromGoogleSheets() { const url = localStorage.getItem(STORAGE_GSHEET_URL); if(!url) return Swal.fire('Info','URL belum diatur','info'); try { const res = await fetch(url + '?action=getData'); const result = await res.json(); if(result.status === 'success' && result.data) { assets = result.data.assets || []; categories = result.data.categories || categories; locations = result.data.locations || locations; updateExpiredStatus(); saveAssets(); saveMasterData(); refreshFilterOptions(); renderTable(); Swal.fire('Impor Sukses','Data dari GSheet dimuat','success'); } } catch { Swal.fire('Gagal','Gagal impor','error'); } }
+
+// ======================== LOGIN & INIT ========================
+function handleLogin(u,p) { const user = users.find(uu => uu.username === u && uu.password === p); if(user) { currentUser = { username: user.username, role: user.role }; return true; } return false; }
+function initApp() {
+    loadData();
+    refreshFilterOptions();
+    renderTable();
+    initAdvancedCharts();
+    updateAllChartsAndStats();
+    document.getElementById("roleBadge").innerHTML = currentUser.role === 'admin' ? '<span class="text-indigo-600 font-bold">Admin (Full Akses)</span>' : '<span class="text-gray-600">User (Read Only)</span>';
+    if(currentUser.role !== 'admin') { document.getElementById("addAssetBtn").classList.add("hidden"); document.getElementById("manageUsersBtn").classList.add("hidden"); } else { document.getElementById("addAssetBtn").classList.remove("hidden"); document.getElementById("manageUsersBtn").classList.remove("hidden"); }
+    document.getElementById("loginContainer").classList.add("hidden");
+    document.getElementById("appContainer").classList.remove("hidden");
+    attachEvents();
+}
+function attachEvents() {
+    document.getElementById("addAssetBtn").addEventListener("click", () => showAssetModal(true));
+    document.getElementById("closeModalBtn").addEventListener("click", () => showAssetModal(false));
+    document.getElementById("modalCancelBtn").addEventListener("click", () => showAssetModal(false));
+    document.getElementById("assetForm").addEventListener("submit", saveAssetHandler);
+    document.getElementById("logoutBtn").addEventListener("click", () => location.reload());
+    document.getElementById("backupBtn").addEventListener("click", backupData);
+    document.getElementById("restoreBtn").addEventListener("click", restoreData);
+    document.getElementById("syncToGSheetBtn").addEventListener("click", setupGSheetUrl);
+    document.getElementById("importFromGSheetBtn").addEventListener("click", importFromGoogleSheets);
+    document.getElementById("openMasterDataBtn").addEventListener("click", renderMasterLists);
+    document.getElementById("manageUsersBtn").addEventListener("click", renderUserTable);
+    document.getElementById("printFilterBtn").addEventListener("click", showPrintDialog);
+    document.getElementById("resetFilterBtn").addEventListener("click", () => { document.getElementById("searchInput").value = ""; document.getElementById("filterStatus").value = "all"; document.getElementById("filterKategori").value = "all"; document.getElementById("filterLokasi").value = "all"; renderTable(); });
+    document.getElementById("exportExcelBtn").addEventListener("click", exportToExcel);
+    document.getElementById("searchInput").addEventListener("input", () => renderTable());
+    document.getElementById("filterStatus").addEventListener("change", () => renderTable());
+    document.getElementById("filterKategori").addEventListener("change", () => renderTable());
+    document.getElementById("filterLokasi").addEventListener("change", () => renderTable());
+    document.getElementById("uploadGambar").addEventListener("change", (e) => { if(e.target.files[0]) { const reader = new FileReader(); reader.onload = ev => { document.getElementById("imagePreviewTag").src = ev.target.result; document.getElementById("imagePreviewTag").classList.remove("hidden"); document.getElementById("noImageText").classList.add("hidden"); }; reader.readAsDataURL(e.target.files[0]); } });
+    document.getElementById("addNewCategoryBtn").addEventListener("click", () => { Swal.fire({ title: 'Tambah Kategori', input: 'text', preConfirm: val => { if(val && !categories.includes(val)) { categories.push(val); saveMasterData(); refreshFilterOptions(); renderTable(); Swal.fire('Sukses','','success'); } else Swal.fire('Gagal','Duplikat atau kosong','error'); } }); });
+    document.getElementById("addNewLokasiBtn").addEventListener("click", () => { Swal.fire({ title: 'Tambah Lokasi', input: 'text', preConfirm: val => { if(val && !locations.includes(val)) { locations.push(val); saveMasterData(); refreshFilterOptions(); renderTable(); Swal.fire('Sukses','','success'); } else Swal.fire('Gagal','Duplikat atau kosong','error'); } }); });
+}
+document.getElementById("loginForm").addEventListener("submit", (e) => { e.preventDefault(); const u = document.getElementById("loginUsername").value; const p = document.getElementById("loginPassword").value; if(handleLogin(u,p)) initApp(); else Swal.fire('Login Gagal','Username/password salah','error'); });
 </script>
 </body>
 </html>
